@@ -12,6 +12,12 @@ export type Role = 'admin' | 'editor' | 'contributor' | 'viewer';
 
 export type Channel = 'social-media' | 'email' | 'paid-search' | 'display' | 'content' | 'events' | 'pr' | 'direct-mail' | 'video' | 'partnerships';
 
+export type CampaignType = 'social-media-campaign' | 'website-update' | 'generic-campaign';
+
+export type RiskLevel = 'green' | 'amber' | 'red' | null;
+
+export type ChecklistItemStatus = 'pending' | 'complete' | 'blocked';
+
 export interface User {
   id: string;
   name: string;
@@ -42,6 +48,10 @@ export interface Campaign {
   createdAt: string;
   updatedAt: string;
   color: string;
+  campaignType?: CampaignType;
+  riskLevel?: RiskLevel;
+  checklist?: ChecklistItem[];
+  governanceScore?: number;
 }
 
 export interface Task {
@@ -124,4 +134,60 @@ export interface AIBrief {
   messaging: { audience: string; keyMessage: string; tone: string }[];
   totalBudget: number;
   duration: string;
+}
+
+// ===== GOVERNANCE & QUALITY ENGINE =====
+
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  status: ChecklistItemStatus;
+  mandatory: boolean;
+  approvalRequired: boolean;
+  ownerId?: string;
+  dueDate?: string;
+  completedAt?: string;
+  completedBy?: string;
+  aiSuggested?: boolean;
+}
+
+export interface GovernanceScore {
+  score: number;
+  maxScore: number;
+  breakdown: {
+    category: string;
+    score: number;
+    maxScore: number;
+    items: number;
+    completed: number;
+  }[];
+  riskFlag: 'green' | 'amber' | 'red';
+  launchReady: boolean;
+  blockers: string[];
+}
+
+export interface ChecklistTemplate {
+  id: string;
+  name: string;
+  campaignType: CampaignType;
+  version: number;
+  items: Omit<ChecklistItem, 'id' | 'status' | 'completedAt' | 'completedBy'>[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ===== NOTIFICATIONS =====
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'approval' | 'task' | 'campaign' | 'system' | 'ai' | 'governance';
+  read: boolean;
+  timestamp: string;
+  link?: ViewType;
+  campaignId?: string;
+  icon?: string;
 }
