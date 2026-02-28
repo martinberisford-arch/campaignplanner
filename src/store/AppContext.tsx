@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem } from '../types';
-import { campaigns as initialCampaigns, approvalItems as initialApprovals, assets as initialAssets } from '../data/mockData';
+import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace } from '../types';
+import { campaigns as initialCampaigns, approvalItems as initialApprovals, assets as initialAssets, workspaces as initialWorkspaces } from '../data/mockData';
 import { getPermissions, Permissions } from '../utils/permissions';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -112,6 +112,20 @@ interface AppState {
   manualKpiData: Record<string, number>;
   setManualKpiData: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 
+  // Workspaces
+  workspacesList: Workspace[];
+  setWorkspacesList: React.Dispatch<React.SetStateAction<Workspace[]>>;
+  activeWorkspaceId: string | null;
+  setActiveWorkspaceId: (id: string | null) => void;
+  addWorkspace: (ws: Workspace) => void;
+  editWorkspace: (id: string, updates: Partial<Workspace>) => void;
+  deleteWorkspace: (id: string) => void;
+
+  // Asset CRUD
+  addAsset: (asset: Asset) => void;
+  editAsset: (id: string, updates: Partial<Asset>) => void;
+  deleteAsset: (id: string) => void;
+
   // Sync
   syncStatus: SyncStatus;
   lastSyncedAt: string | null;
@@ -149,7 +163,7 @@ const defaultNotifSettings: NotificationSetting[] = [
 ];
 
 const defaultTeamMembers: TeamMember[] = [
-  { id: 'u1', name: 'Sarah Mitchell', email: 'admin@campaignos.com', role: 'admin', avatar: 'SM', department: 'Communications', password: 'admin123', createdAt: '2024-06-01', lastLogin: '2025-01-22', active: true },
+  { id: 'u1', name: 'Admin User', email: 'admin@campaignos.com', role: 'admin', avatar: 'AU', department: 'Communications', password: 'admin123', createdAt: '2024-06-01', lastLogin: '2025-01-22', active: true },
   { id: 'u2', name: 'James Richardson', email: 'editor@campaignos.com', role: 'editor', avatar: 'JR', department: 'Marketing', password: 'editor123', createdAt: '2024-06-15', lastLogin: '2025-01-21', active: true },
   { id: 'u3', name: 'Priya Sharma', email: 'contributor@campaignos.com', role: 'contributor', avatar: 'PS', department: 'Digital', password: 'contributor123', createdAt: '2024-07-01', lastLogin: '2025-01-20', active: true },
   { id: 'u4', name: 'Marcus Johnson', email: 'marcus.j@nhs.net', role: 'editor', avatar: 'MJ', department: 'Strategy', password: 'pass123', createdAt: '2024-07-15', active: true },
@@ -200,6 +214,8 @@ interface SharedState {
   notificationSettings: NotificationSetting[];
   integrations: IntegrationSetting[];
   manualKpiData: Record<string, number>;
+  workspacesList: Workspace[];
+  activeWorkspaceId: string | null;
 }
 
 // ==================== PROVIDER ====================
@@ -229,6 +245,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notificationSettings, setNotificationSettings] = useState<NotificationSetting[]>(defaultNotifSettings);
   const [integrations, setIntegrations] = useState<IntegrationSetting[]>(defaultIntegrations);
   const [manualKpiData, setManualKpiData] = useState<Record<string, number>>({});
+  const [workspacesList, setWorkspacesList] = useState<Workspace[]>(initialWorkspaces);
+  const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState<string | null>(null);
 
   // --- Sync state ---
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -251,6 +269,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     notificationSettings: defaultNotifSettings,
     integrations: defaultIntegrations,
     manualKpiData: {},
+    workspacesList: initialWorkspaces,
+    activeWorkspaceId: null,
   });
 
   // Sync the ref on every render
@@ -264,6 +284,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     notificationSettings,
     integrations,
     manualKpiData,
+    workspacesList,
+    activeWorkspaceId: activeWorkspaceId,
   };
 
   const permissions = currentUser ? getPermissions(currentUser.role) : viewerPermissions;
@@ -286,6 +308,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (state.notificationSettings) setNotificationSettings(state.notificationSettings);
     if (state.integrations) setIntegrations(state.integrations);
     if (state.manualKpiData !== undefined) setManualKpiData(state.manualKpiData);
+    if (state.workspacesList) setWorkspacesList(state.workspacesList);
+    if (state.activeWorkspaceId !== undefined) setActiveWorkspaceIdRaw(state.activeWorkspaceId);
   }, []);
 
   const pushToServer = useCallback(async () => {
@@ -382,7 +406,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     schedulePush();
-  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, schedulePush]);
+  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, schedulePush]);
 
   // --- Poll for remote changes ---
   useEffect(() => {
@@ -585,6 +609,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTeamMembersRaw(prev => prev.map(u => u.id === id ? { ...u, active: true } : u));
   }, []);
 
+  // ==================== WORKSPACES ====================
+
+  const setActiveWorkspaceId = useCallback((id: string | null) => {
+    setActiveWorkspaceIdRaw(id);
+  }, []);
+
+  const addWorkspace = useCallback((ws: Workspace) => {
+    setWorkspacesList(prev => [...prev, ws]);
+  }, []);
+
+  const editWorkspace = useCallback((id: string, updates: Partial<Workspace>) => {
+    setWorkspacesList(prev => prev.map(w => w.id === id ? { ...w, ...updates } : w));
+  }, []);
+
+  const deleteWorkspace = useCallback((id: string) => {
+    setWorkspacesList(prev => prev.filter(w => w.id !== id));
+    setActiveWorkspaceIdRaw(prev => prev === id ? null : prev);
+  }, []);
+
+  // ==================== ASSET CRUD ====================
+
+  const addAsset = useCallback((asset: Asset) => {
+    setAssets(prev => [asset, ...prev]);
+  }, []);
+
+  const editAsset = useCallback((id: string, updates: Partial<Asset>) => {
+    setAssets(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  }, []);
+
+  const deleteAsset = useCallback((id: string) => {
+    setAssets(prev => prev.filter(a => a.id !== id));
+  }, []);
+
   // ==================== SYNC CONTROLS (exposed) ====================
 
   const forcePush = useCallback(() => {
@@ -636,6 +693,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       teamMembers, setTeamMembers,
       createUser, updateUser, deactivateUser, reactivateUser,
       manualKpiData, setManualKpiData,
+      workspacesList, setWorkspacesList, activeWorkspaceId, setActiveWorkspaceId,
+      addWorkspace, editWorkspace, deleteWorkspace,
+      addAsset, editAsset, deleteAsset,
       syncStatus, lastSyncedAt, forcePush, forceRefresh, resetRemoteState,
     }}>
       {children}

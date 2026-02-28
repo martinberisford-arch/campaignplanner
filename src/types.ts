@@ -93,8 +93,10 @@ export interface KPI {
 export interface Asset {
   id: string;
   name: string;
-  type: 'image' | 'video' | 'document' | 'template' | 'guideline';
+  type: 'image' | 'video' | 'document' | 'template' | 'guideline' | 'link';
+  source: 'file' | 'link';
   url: string;
+  linkUrl?: string;
   thumbnail: string;
   tags: string[];
   campaignId?: string;
@@ -102,6 +104,8 @@ export interface Asset {
   createdAt: string;
   size: string;
   aiTags: string[];
+  workspace?: string;
+  description?: string;
 }
 
 export interface ActivityLog {
@@ -120,6 +124,9 @@ export interface Workspace {
   campaigns: number;
   members: number;
   icon: string;
+  color: string;
+  createdAt: string;
+  createdBy: string;
 }
 
 export interface AIBrief {

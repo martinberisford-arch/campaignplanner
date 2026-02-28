@@ -1,8 +1,8 @@
 import { User, Campaign, Task, ApprovalItem, Asset, ActivityLog, Workspace } from '../types';
 
 export const currentUser: User = {
-  id: 'u1', name: 'Sarah Mitchell', email: 'sarah.mitchell@nhs.net',
-  role: 'admin', avatar: 'SM', department: 'Communications'
+  id: 'u1', name: 'Admin User', email: 'admin@campaignos.com',
+  role: 'admin', avatar: 'AU', department: 'Communications'
 };
 
 export const users: User[] = [
@@ -15,9 +15,9 @@ export const users: User[] = [
 ];
 
 export const workspaces: Workspace[] = [
-  { id: 'ws1', name: 'NHS England Comms', description: 'National communications campaigns', campaigns: 12, members: 24, icon: '🏥' },
-  { id: 'ws2', name: 'Public Health', description: 'Public health awareness programmes', campaigns: 8, members: 16, icon: '🌍' },
-  { id: 'ws3', name: 'Workforce & HR', description: 'Recruitment and retention campaigns', campaigns: 5, members: 10, icon: '👥' },
+  { id: 'ws1', name: 'NHS England Comms', description: 'National communications campaigns', campaigns: 12, members: 24, icon: '🏥', color: '#6366f1', createdAt: '2024-06-01', createdBy: 'u1' },
+  { id: 'ws2', name: 'Public Health', description: 'Public health awareness programmes', campaigns: 8, members: 16, icon: '🌍', color: '#10b981', createdAt: '2024-06-15', createdBy: 'u1' },
+  { id: 'ws3', name: 'Workforce & HR', description: 'Recruitment and retention campaigns', campaigns: 5, members: 10, icon: '👥', color: '#f59e0b', createdAt: '2024-07-01', createdBy: 'u1' },
 ];
 
 const makeTasks = (campaignId: string): Task[] => [
@@ -151,14 +151,16 @@ export const approvalItems: ApprovalItem[] = [
 ];
 
 export const assets: Asset[] = [
-  { id: 'as1', name: 'Primary Care Coach - Hero Banner.png', type: 'image', url: '#', thumbnail: '', tags: ['hero', 'recruitment', 'banner'], campaignId: 'c1', uploadedBy: users[1], createdAt: '2025-01-18', size: '2.4 MB', aiTags: ['healthcare', 'professional', 'diverse', 'workplace', 'NHS branding'] },
-  { id: 'as2', name: 'Vaccination Awareness - Video Script.docx', type: 'document', url: '#', thumbnail: '', tags: ['script', 'video', 'vaccination'], campaignId: 'c2', uploadedBy: users[2], createdAt: '2025-01-20', size: '156 KB', aiTags: ['medical', 'awareness', 'script', 'public health'] },
-  { id: 'as3', name: 'Brand Guidelines 2025.pdf', type: 'guideline', url: '#', thumbnail: '', tags: ['brand', 'guidelines', 'identity'], uploadedBy: users[0], createdAt: '2025-01-05', size: '8.7 MB', aiTags: ['brand standards', 'typography', 'colour palette', 'logo usage'] },
-  { id: 'as4', name: 'Social Media Templates Pack.zip', type: 'template', url: '#', thumbnail: '', tags: ['social', 'template', 'design'], uploadedBy: users[1], createdAt: '2025-01-15', size: '45.2 MB', aiTags: ['Instagram', 'Twitter', 'LinkedIn', 'Facebook', 'stories', 'posts'] },
-  { id: 'as5', name: 'Recruitment Video - 30s Cut.mp4', type: 'video', url: '#', thumbnail: '', tags: ['video', 'recruitment', 'ad'], campaignId: 'c1', uploadedBy: users[2], createdAt: '2025-01-19', size: '128 MB', aiTags: ['testimonial', 'NHS staff', 'career', 'primary care'] },
-  { id: 'as6', name: 'Q4 Performance Report.pptx', type: 'document', url: '#', thumbnail: '', tags: ['report', 'performance', 'Q4'], uploadedBy: users[0], createdAt: '2025-01-10', size: '3.1 MB', aiTags: ['analytics', 'KPIs', 'quarterly', 'metrics'] },
-  { id: 'as7', name: 'Event Photography Set.zip', type: 'image', url: '#', thumbnail: '', tags: ['photos', 'events', 'roadshow'], campaignId: 'c4', uploadedBy: users[5], createdAt: '2025-01-21', size: '234 MB', aiTags: ['conference', 'speakers', 'audience', 'networking'] },
-  { id: 'as8', name: 'Mental Health Toolkit.pdf', type: 'document', url: '#', thumbnail: '', tags: ['toolkit', 'mental health', 'resources'], campaignId: 'c3', uploadedBy: users[1], createdAt: '2025-01-22', size: '5.6 MB', aiTags: ['wellbeing', 'support', 'employer toolkit', 'guidance'] },
+  { id: 'as1', name: 'Primary Care Coach - Hero Banner.png', type: 'image', source: 'file', url: '#', thumbnail: '', tags: ['hero', 'recruitment', 'banner'], campaignId: 'c1', uploadedBy: users[1], createdAt: '2025-01-18', size: '2.4 MB', aiTags: ['healthcare', 'professional', 'diverse', 'workplace', 'NHS branding'], workspace: 'ws3' },
+  { id: 'as2', name: 'Vaccination Awareness - Video Script.docx', type: 'document', source: 'file', url: '#', thumbnail: '', tags: ['script', 'video', 'vaccination'], campaignId: 'c2', uploadedBy: users[2], createdAt: '2025-01-20', size: '156 KB', aiTags: ['medical', 'awareness', 'script', 'public health'], workspace: 'ws2' },
+  { id: 'as3', name: 'Brand Guidelines 2025.pdf', type: 'guideline', source: 'file', url: '#', thumbnail: '', tags: ['brand', 'guidelines', 'identity'], uploadedBy: users[0], createdAt: '2025-01-05', size: '8.7 MB', aiTags: ['brand standards', 'typography', 'colour palette', 'logo usage'], workspace: 'ws1' },
+  { id: 'as4', name: 'Social Media Templates Pack.zip', type: 'template', source: 'file', url: '#', thumbnail: '', tags: ['social', 'template', 'design'], uploadedBy: users[1], createdAt: '2025-01-15', size: '45.2 MB', aiTags: ['Instagram', 'Twitter', 'LinkedIn', 'Facebook', 'stories', 'posts'], workspace: 'ws1' },
+  { id: 'as5', name: 'Recruitment Video - 30s Cut.mp4', type: 'video', source: 'file', url: '#', thumbnail: '', tags: ['video', 'recruitment', 'ad'], campaignId: 'c1', uploadedBy: users[2], createdAt: '2025-01-19', size: '128 MB', aiTags: ['testimonial', 'NHS staff', 'career', 'primary care'], workspace: 'ws3' },
+  { id: 'as6', name: 'Q4 Performance Report.pptx', type: 'document', source: 'file', url: '#', thumbnail: '', tags: ['report', 'performance', 'Q4'], uploadedBy: users[0], createdAt: '2025-01-10', size: '3.1 MB', aiTags: ['analytics', 'KPIs', 'quarterly', 'metrics'], workspace: 'ws1' },
+  { id: 'as7', name: 'Event Photography Set.zip', type: 'image', source: 'file', url: '#', thumbnail: '', tags: ['photos', 'events', 'roadshow'], campaignId: 'c4', uploadedBy: users[5], createdAt: '2025-01-21', size: '234 MB', aiTags: ['conference', 'speakers', 'audience', 'networking'], workspace: 'ws1' },
+  { id: 'as8', name: 'Mental Health Toolkit.pdf', type: 'document', source: 'file', url: '#', thumbnail: '', tags: ['toolkit', 'mental health', 'resources'], campaignId: 'c3', uploadedBy: users[1], createdAt: '2025-01-22', size: '5.6 MB', aiTags: ['wellbeing', 'support', 'employer toolkit', 'guidance'], workspace: 'ws2' },
+  { id: 'as9', name: 'NHS Brand Guidelines Website', type: 'link', source: 'link', url: '#', linkUrl: 'https://www.england.nhs.uk/nhsidentity/', thumbnail: '', tags: ['brand', 'reference', 'NHS'], uploadedBy: users[0], createdAt: '2025-01-08', size: '-', aiTags: ['brand identity', 'guidelines', 'NHS', 'official'], workspace: 'ws1', description: 'Official NHS England identity guidelines and brand toolkit' },
+  { id: 'as10', name: 'Canva Campaign Templates', type: 'link', source: 'link', url: '#', linkUrl: 'https://www.canva.com/templates/', thumbnail: '', tags: ['design', 'templates', 'social'], uploadedBy: users[1], createdAt: '2025-01-12', size: '-', aiTags: ['design tool', 'templates', 'social media', 'creative'], workspace: 'ws1', description: 'Pre-made social media and campaign design templates on Canva' },
 ];
 
 export const activityLog: ActivityLog[] = [

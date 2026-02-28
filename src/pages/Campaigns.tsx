@@ -5,7 +5,7 @@ import { users } from '../data/mockData';
 import {
   LayoutList, Kanban, Table2, GanttChart, Filter, Plus, Search,
   Clock, Users, DollarSign, ArrowRight, GripVertical, ChevronDown,
-  X, Calendar, Target, Megaphone
+  X, Calendar, Target, Megaphone, Trash2
 } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
@@ -32,7 +32,7 @@ const priorityColors: Record<string, string> = {
 const CAMPAIGN_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444', '#84cc16'];
 
 export default function Campaigns() {
-  const { campaigns, setView, setSelectedCampaignId, updateTaskStatus, addCampaign } = useApp();
+  const { campaigns, setView, setSelectedCampaignId, updateTaskStatus, addCampaign, deleteCampaign, permissions } = useApp();
   const [boardView, setBoardView] = useState<BoardView>('kanban');
   const [selectedCampaign, setSelectedCampaign] = useState(campaigns[0]?.id || '');
   const [filterStatus, setFilterStatus] = useState<CampaignStatus | 'all'>('all');
@@ -40,6 +40,7 @@ export default function Campaigns() {
   const [showNewCampaign, setShowNewCampaign] = useState(false);
   const [dragOverColumn, setDragOverColumn] = useState<Task['status'] | null>(null);
   const dragTaskRef = useRef<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // New campaign form state
   const [newTitle, setNewTitle] = useState('');
@@ -85,7 +86,6 @@ export default function Campaigns() {
 
   const handleCreateCampaign = () => {
     if (!newTitle.trim()) return;
-
     const newCampaign: Campaign = {
       id: `c${Date.now()}`,
       title: newTitle,
@@ -112,20 +112,11 @@ export default function Campaigns() {
       updatedAt: new Date().toISOString().split('T')[0],
       color: CAMPAIGN_COLORS[Math.floor(Math.random() * CAMPAIGN_COLORS.length)],
     };
-
     addCampaign(newCampaign);
     setShowNewCampaign(false);
-    setNewTitle('');
-    setNewDesc('');
-    setNewPriority('medium');
-    setNewStatus('draft');
-    setNewStartDate('');
-    setNewEndDate('');
-    setNewBudget('');
-    setNewChannels([]);
-    setNewGoals('');
-    setNewAudiences('');
-    setFormStep(1);
+    setNewTitle(''); setNewDesc(''); setNewPriority('medium'); setNewStatus('draft');
+    setNewStartDate(''); setNewEndDate(''); setNewBudget('');
+    setNewChannels([]); setNewGoals(''); setNewAudiences(''); setFormStep(1);
     setSelectedCampaign(newCampaign.id);
   };
 
@@ -136,6 +127,29 @@ export default function Campaigns() {
   const openCampaignDetail = (id: string) => {
     setSelectedCampaignId(id);
     setView('campaign-detail');
+  };
+
+  const handleDeleteCampaign = (id: string) => {
+    deleteCampaign(id);
+    setDeleteConfirmId(null);
+    // If the deleted campaign was selected, switch to first remaining
+    if (selectedCampaign === id) {
+      const remaining = campaigns.filter(c => c.id !== id);
+      if (remaining.length > 0) setSelectedCampaign(remaining[0].id);
+    }
+  };
+
+  const DeleteButton = ({ campaignId, size = 'sm' }: { campaignId: string; size?: 'sm' | 'md' }) => {
+    if (!permissions.canDeleteCampaign) return null;
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(campaignId); }}
+        className={`${size === 'sm' ? 'p-1.5' : 'p-2'} rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors`}
+        title="Delete campaign"
+      >
+        <Trash2 size={size === 'sm' ? 14 : 16} />
+      </button>
+    );
   };
 
   return (
@@ -179,15 +193,7 @@ export default function Campaigns() {
             <option value="completed">Completed</option>
           </select>
         </div>
-        {boardView === 'kanban' && (
-          <div className="flex items-center gap-2">
-            <select value={selectedCampaign} onChange={e => setSelectedCampaign(e.target.value)}
-              className="bg-slate-800 border border-slate-700/50 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50">
-              {campaigns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-          </div>
-        )}
-        {boardView === 'timeline' && (
+        {(boardView === 'kanban' || boardView === 'timeline') && (
           <div className="flex items-center gap-2">
             <select value={selectedCampaign} onChange={e => setSelectedCampaign(e.target.value)}
               className="bg-slate-800 border border-slate-700/50 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50">
@@ -277,10 +283,9 @@ export default function Campaigns() {
       {boardView === 'list' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800">
           {filteredCampaigns.map(c => (
-            <div key={c.id} className="p-4 hover:bg-slate-800/30 cursor-pointer transition-colors flex items-center gap-4"
-              onClick={() => openCampaignDetail(c.id)}>
-              <div className="w-1.5 h-10 rounded-full" style={{ backgroundColor: c.color }} />
-              <div className="flex-1 min-w-0">
+            <div key={c.id} className="p-4 hover:bg-slate-800/30 transition-colors flex items-center gap-4 group">
+              <div className="w-1.5 h-10 rounded-full cursor-pointer" style={{ backgroundColor: c.color }} onClick={() => openCampaignDetail(c.id)} />
+              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openCampaignDetail(c.id)}>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-medium">{c.title}</h3>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize border ${statusColors[c.status]}`}>
@@ -300,7 +305,12 @@ export default function Campaigns() {
                   <div className="h-full rounded-full" style={{ width: `${(c.spent/c.budget)*100}%`, backgroundColor: c.color }} />
                 </div>
               </div>
-              <ArrowRight size={16} className="text-slate-600 flex-shrink-0" />
+              <div className="flex items-center gap-1">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <DeleteButton campaignId={c.id} />
+                </div>
+                <ArrowRight size={16} className="text-slate-600 flex-shrink-0 cursor-pointer" onClick={() => openCampaignDetail(c.id)} />
+              </div>
             </div>
           ))}
           {filteredCampaigns.length === 0 && (
@@ -323,11 +333,10 @@ export default function Campaigns() {
                 <th className="text-left p-4 font-semibold">Status</th>
                 <th className="text-left p-4 font-semibold">Priority</th>
                 <th className="text-left p-4 font-semibold">Owner</th>
-                <th className="text-left p-4 font-semibold">Team</th>
                 <th className="text-left p-4 font-semibold">Budget</th>
-                <th className="text-left p-4 font-semibold">Spent</th>
                 <th className="text-left p-4 font-semibold">Dates</th>
                 <th className="text-left p-4 font-semibold">Progress</th>
+                <th className="text-center p-4 font-semibold w-16">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
@@ -335,9 +344,8 @@ export default function Campaigns() {
                 const done = c.tasks.filter(t => t.status === 'done').length;
                 const total = c.tasks.length;
                 return (
-                  <tr key={c.id} className="hover:bg-slate-800/20 cursor-pointer transition-colors"
-                    onClick={() => openCampaignDetail(c.id)}>
-                    <td className="p-4">
+                  <tr key={c.id} className="hover:bg-slate-800/20 transition-colors group">
+                    <td className="p-4 cursor-pointer" onClick={() => openCampaignDetail(c.id)}>
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-6 rounded-full" style={{ backgroundColor: c.color }} />
                         <span className="font-medium">{c.title}</span>
@@ -355,16 +363,7 @@ export default function Campaigns() {
                         <span className="text-xs">{c.owner.name}</span>
                       </div>
                     </td>
-                    <td className="p-4">
-                      <div className="flex -space-x-1.5">
-                        {c.team.slice(0, 4).map(m => (
-                          <div key={m.id} className="w-6 h-6 rounded-full bg-slate-700 border-2 border-slate-900 flex items-center justify-center text-[9px] font-bold" title={m.name}>{m.avatar}</div>
-                        ))}
-                        {c.team.length > 4 && <div className="w-6 h-6 rounded-full bg-slate-600 border-2 border-slate-900 flex items-center justify-center text-[9px]">+{c.team.length-4}</div>}
-                      </div>
-                    </td>
                     <td className="p-4 text-xs">£{(c.budget/1000).toFixed(0)}k</td>
-                    <td className="p-4 text-xs">£{(c.spent/1000).toFixed(1)}k</td>
                     <td className="p-4 text-xs text-slate-400">{c.startDate} → {c.endDate}</td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -372,6 +371,11 @@ export default function Campaigns() {
                           <div className="h-full bg-brand-500 rounded-full" style={{ width: `${total > 0 ? (done/total)*100 : 0}%` }} />
                         </div>
                         <span className="text-[10px] text-slate-500">{total > 0 ? Math.round((done/total)*100) : 0}%</span>
+                      </div>
+                    </td>
+                    <td className="p-4 text-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex">
+                        <DeleteButton campaignId={c.id} />
                       </div>
                     </td>
                   </tr>
@@ -411,6 +415,33 @@ export default function Campaigns() {
         </div>
       )}
 
+      {/* Delete Campaign Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)} />
+          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl animate-fade-in p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={24} className="text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold mb-2">Delete Campaign?</h3>
+            <p className="text-sm text-slate-400 mb-1">
+              "{campaigns.find(c => c.id === deleteConfirmId)?.title}"
+            </p>
+            <p className="text-xs text-red-400/70 mb-6">This will permanently delete the campaign, all its tasks, and governance data. This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => handleDeleteCampaign(deleteConfirmId)}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl text-sm font-semibold transition-colors">
+                Delete Forever
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* New Campaign Modal */}
       {showNewCampaign && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -425,8 +456,6 @@ export default function Campaigns() {
                 <X size={20} className="text-slate-400" />
               </button>
             </div>
-
-            {/* Progress bar */}
             <div className="px-6 pt-4">
               <div className="flex gap-2 mb-6">
                 {[1, 2, 3].map(step => (
@@ -436,177 +465,92 @@ export default function Campaigns() {
                 ))}
               </div>
             </div>
-
             <div className="p-6 pt-0">
-              {/* Step 1: Basic Info */}
               {formStep === 1 && (
                 <div className="space-y-5 animate-fade-in">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-brand-500/20 flex items-center justify-center">
-                      <Megaphone size={20} className="text-brand-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Campaign Details</h3>
-                      <p className="text-xs text-slate-400">Name, description, and priorities</p>
-                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-brand-500/20 flex items-center justify-center"><Megaphone size={20} className="text-brand-400" /></div>
+                    <div><h3 className="font-semibold">Campaign Details</h3><p className="text-xs text-slate-400">Name, description, and priorities</p></div>
                   </div>
-
                   <div>
                     <label className="text-xs text-slate-400 mb-1.5 block font-medium">Campaign Title *</label>
-                    <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)}
-                      placeholder="e.g., Staff Recruitment Drive Q2 2025"
+                    <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g., Staff Recruitment Drive Q2 2025"
                       className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50" />
                   </div>
-
                   <div>
                     <label className="text-xs text-slate-400 mb-1.5 block font-medium">Description</label>
-                    <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)}
-                      placeholder="Brief description of the campaign objectives and scope..."
-                      rows={3}
+                    <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Brief description..." rows={3}
                       className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 resize-none" />
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-slate-400 mb-1.5 block font-medium">Priority</label>
-                      <select value={newPriority} onChange={e => setNewPriority(e.target.value as Priority)}
-                        className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50">
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
+                      <select value={newPriority} onChange={e => setNewPriority(e.target.value as Priority)} className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none">
+                        <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
                       </select>
                     </div>
                     <div>
                       <label className="text-xs text-slate-400 mb-1.5 block font-medium">Initial Status</label>
-                      <select value={newStatus} onChange={e => setNewStatus(e.target.value as CampaignStatus)}
-                        className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50">
-                        <option value="draft">Draft</option>
-                        <option value="planning">Planning</option>
+                      <select value={newStatus} onChange={e => setNewStatus(e.target.value as CampaignStatus)} className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none">
+                        <option value="draft">Draft</option><option value="planning">Planning</option>
                       </select>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-slate-400 mb-1.5 block font-medium">Start Date</label>
-                      <input type="date" value={newStartDate} onChange={e => setNewStartDate(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400 mb-1.5 block font-medium">End Date</label>
-                      <input type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50" />
-                    </div>
+                    <div><label className="text-xs text-slate-400 mb-1.5 block font-medium">Start Date</label><input type="date" value={newStartDate} onChange={e => setNewStartDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none" /></div>
+                    <div><label className="text-xs text-slate-400 mb-1.5 block font-medium">End Date</label><input type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none" /></div>
                   </div>
                 </div>
               )}
-
-              {/* Step 2: Strategy */}
               {formStep === 2 && (
                 <div className="space-y-5 animate-fade-in">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                      <Target size={20} className="text-emerald-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Strategy & Targeting</h3>
-                      <p className="text-xs text-slate-400">Goals, audiences, and budget</p>
-                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center"><Target size={20} className="text-emerald-400" /></div>
+                    <div><h3 className="font-semibold">Strategy & Targeting</h3><p className="text-xs text-slate-400">Goals, audiences, and budget</p></div>
                   </div>
-
-                  <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Campaign Goals (one per line)</label>
-                    <textarea value={newGoals} onChange={e => setNewGoals(e.target.value)}
-                      placeholder={"Recruit 200 primary care coaches\nAchieve 50,000 applications\nBuild employer brand awareness"}
-                      rows={3}
-                      className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 resize-none" />
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Target Audiences (one per line)</label>
-                    <textarea value={newAudiences} onChange={e => setNewAudiences(e.target.value)}
-                      placeholder={"Healthcare professionals\nCareer changers\nRecent graduates"}
-                      rows={3}
-                      className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 resize-none" />
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Budget (£)</label>
-                    <input type="number" value={newBudget} onChange={e => setNewBudget(e.target.value)}
-                      placeholder="150000"
-                      className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50" />
-                  </div>
+                  <div><label className="text-xs text-slate-400 mb-1.5 block font-medium">Campaign Goals (one per line)</label><textarea value={newGoals} onChange={e => setNewGoals(e.target.value)} placeholder={"Recruit 200 primary care coaches\nAchieve 50,000 applications"} rows={3} className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none resize-none" /></div>
+                  <div><label className="text-xs text-slate-400 mb-1.5 block font-medium">Target Audiences (one per line)</label><textarea value={newAudiences} onChange={e => setNewAudiences(e.target.value)} placeholder={"Healthcare professionals\nCareer changers"} rows={3} className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none resize-none" /></div>
+                  <div><label className="text-xs text-slate-400 mb-1.5 block font-medium">Budget (£)</label><input type="number" value={newBudget} onChange={e => setNewBudget(e.target.value)} placeholder="150000" className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none" /></div>
                 </div>
               )}
-
-              {/* Step 3: Channels */}
               {formStep === 3 && (
                 <div className="space-y-5 animate-fade-in">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                      <Calendar size={20} className="text-amber-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Channels & Launch</h3>
-                      <p className="text-xs text-slate-400">Select channels and review</p>
-                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center"><Calendar size={20} className="text-amber-400" /></div>
+                    <div><h3 className="font-semibold">Channels & Launch</h3><p className="text-xs text-slate-400">Select channels and review</p></div>
                   </div>
-
                   <div>
                     <label className="text-xs text-slate-400 mb-2 block font-medium">Campaign Channels</label>
                     <div className="grid grid-cols-2 gap-2">
                       {availableChannels.map(ch => (
                         <button key={ch.id} onClick={() => toggleChannel(ch.id)}
-                          className={`p-3 rounded-xl text-sm font-medium text-left transition-all border ${
-                            newChannels.includes(ch.id)
-                              ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
-                              : 'bg-slate-800 border-slate-700/50 text-slate-400 hover:border-slate-600'
-                          }`}>
+                          className={`p-3 rounded-xl text-sm font-medium text-left transition-all border ${newChannels.includes(ch.id) ? 'bg-brand-500/20 border-brand-500/40 text-brand-300' : 'bg-slate-800 border-slate-700/50 text-slate-400 hover:border-slate-600'}`}>
                           {ch.label}
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  {/* Summary */}
                   <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/30">
                     <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Campaign Summary</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between"><span className="text-slate-400">Title</span><span className="font-medium">{newTitle || 'Untitled'}</span></div>
                       <div className="flex justify-between"><span className="text-slate-400">Priority</span><span className={`font-semibold capitalize ${priorityColors[newPriority]}`}>{newPriority}</span></div>
                       <div className="flex justify-between"><span className="text-slate-400">Budget</span><span className="font-medium">£{parseInt(newBudget || '0').toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-400">Dates</span><span className="font-medium">{newStartDate || 'TBD'} → {newEndDate || 'TBD'}</span></div>
                       <div className="flex justify-between"><span className="text-slate-400">Channels</span><span className="font-medium">{newChannels.length} selected</span></div>
                     </div>
                   </div>
                 </div>
               )}
-
-              {/* Navigation */}
               <div className="flex items-center justify-between mt-8 pt-5 border-t border-slate-800">
                 {formStep > 1 ? (
-                  <button onClick={() => setFormStep(s => s - 1)}
-                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
-                    Back
-                  </button>
+                  <button onClick={() => setFormStep(s => s - 1)} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Back</button>
                 ) : (
-                  <button onClick={() => setShowNewCampaign(false)}
-                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
-                    Cancel
-                  </button>
+                  <button onClick={() => setShowNewCampaign(false)} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
                 )}
-
                 {formStep < 3 ? (
-                  <button onClick={() => setFormStep(s => s + 1)}
-                    disabled={formStep === 1 && !newTitle.trim()}
-                    className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors">
-                    Continue
-                  </button>
+                  <button onClick={() => setFormStep(s => s + 1)} disabled={formStep === 1 && !newTitle.trim()} className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors">Continue</button>
                 ) : (
-                  <button onClick={handleCreateCampaign}
-                    disabled={!newTitle.trim()}
-                    className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors flex items-center gap-2">
+                  <button onClick={handleCreateCampaign} disabled={!newTitle.trim()} className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors flex items-center gap-2">
                     <Plus size={16} /> Create Campaign
                   </button>
                 )}
