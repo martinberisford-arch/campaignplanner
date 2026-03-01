@@ -1,4 +1,4 @@
-export type ViewType = 'dashboard' | 'calendar' | 'campaigns' | 'ai-brief' | 'approvals' | 'kpi' | 'assets' | 'settings' | 'campaign-detail' | 'login' | 'user-management';
+export type ViewType = 'dashboard' | 'calendar' | 'campaigns' | 'ai-brief' | 'approvals' | 'kpi' | 'assets' | 'settings' | 'campaign-detail' | 'login' | 'user-management' | 'mkt-strategy' | 'mkt-calendar' | 'mkt-ideas' | 'mkt-performance';
 
 export type BoardView = 'kanban' | 'list' | 'table' | 'timeline';
 
@@ -183,6 +183,122 @@ export interface ChecklistTemplate {
   items: Omit<ChecklistItem, 'id' | 'status' | 'completedAt' | 'completedBy'>[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ===== MARKETING TOOLS =====
+
+export type IdeaCategory = 'acquisition' | 'activation' | 'engagement' | 'retention' | 'referral' | 'authority' | 'community' | 'partnerships';
+
+export type IdeaStage = 'early' | 'growth' | 'mature';
+
+export type IdeaBudget = 'low' | 'medium' | 'high';
+
+export type IdeaTimeline = 'quick-win' | '30-60-days' | 'long-term';
+
+export type GovernanceRiskLevel = 'low' | 'medium' | 'high';
+
+export type IdeaStatus = 'library' | 'shortlisted' | 'activated' | 'completed' | 'paused';
+
+export interface MarketingIdea {
+  id: string;
+  name: string;
+  description: string;
+  category: IdeaCategory;
+  stage: IdeaStage;
+  budget: IdeaBudget;
+  timeline: IdeaTimeline;
+  primaryKPI: string;
+  secondaryKPI: string;
+  governanceRisk: GovernanceRiskLevel;
+  requiredAssets: string[];
+  requiredStakeholders: string[];
+  executionChecklist: string[];
+  expectedOutcome: string;
+  measurementPlan: string;
+  status: IdeaStatus;
+  activatedAt?: string;
+  completedAt?: string;
+  performanceScore?: number;
+  campaignId?: string;
+  dpiaRequired: boolean;
+  consentRequired: boolean;
+  assetConsentRequired: boolean;
+  retentionImplication: string;
+  lawfulBasis: string;
+  version: number;
+  deletedAt?: string;
+}
+
+export interface GrowthCoverage {
+  acquisition: number;
+  activation: number;
+  engagement: number;
+  retention: number;
+  referral: number;
+  authority: number;
+  community: number;
+  partnerships: number;
+}
+
+export interface IdeaRecommendation {
+  idea: MarketingIdea;
+  score: number;
+  reasons: string[];
+  kpiGap: string;
+}
+
+export interface AnalyticsEvent {
+  event: string;
+  timestamp: string;
+  ideaId?: string;
+  campaignId?: string;
+  metadata: Record<string, string>;
+}
+
+// ===== KPI DATA WITH SOURCE TRACKING =====
+
+export type KPIDataSource = 'seed' | 'manual' | 'ga4' | 'meta' | 'linkedin' | 'hubspot' | 'import';
+
+export interface KPIChannelEntry {
+  id: string;
+  channel: string;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  spend: number;
+  roi: number;
+  source: KPIDataSource;
+  sourceLabel: string;
+  addedAt: string;
+  addedBy: string;
+  notes?: string;
+}
+
+export interface KPITimeSeriesEntry {
+  id: string;
+  week: string;
+  impressions: number;
+  clicks: number;
+  leads: number;
+  spend: number;
+  applications: number;
+  source: KPIDataSource;
+  sourceLabel: string;
+  addedAt: string;
+  addedBy: string;
+  notes?: string;
+}
+
+export interface KPISentimentEntry {
+  id: string;
+  date: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  source: KPIDataSource;
+  sourceLabel: string;
+  addedAt: string;
+  addedBy: string;
 }
 
 // ===== NOTIFICATIONS =====

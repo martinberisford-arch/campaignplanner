@@ -10,6 +10,10 @@ import KPIDashboard from './pages/KPIDashboard';
 import Assets from './pages/Assets';
 import CampaignDetail from './pages/CampaignDetail';
 import Settings from './pages/Settings';
+import MktStrategy from './pages/MktStrategy';
+import MktCalendar from './pages/MktCalendar';
+import MktIdeas from './pages/MktIdeas';
+import MktPerformance from './pages/MktPerformance';
 
 function AppRouter() {
   const { currentView, isAuthenticated } = useApp();
@@ -29,6 +33,10 @@ function AppRouter() {
       case 'assets': return <Assets />;
       case 'campaign-detail': return <CampaignDetail />;
       case 'settings': return <Settings />;
+      case 'mkt-strategy': return <MktStrategy />;
+      case 'mkt-calendar': return <MktCalendar />;
+      case 'mkt-ideas': return <MktIdeas />;
+      case 'mkt-performance': return <MktPerformance />;
       default: return <Dashboard />;
     }
   };

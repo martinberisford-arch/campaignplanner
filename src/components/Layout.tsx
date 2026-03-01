@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Calendar, FolderKanban, Sparkles, CheckCircle2,
   BarChart3, ImageIcon, Settings, ChevronLeft, ChevronRight,
   Bell, Search, Menu, LogOut, Shield, Zap, Lock, X, Check, Clock,
-  Cloud, CloudOff, RefreshCw, Wifi, WifiOff, Plus, Pencil, Trash2, ChevronDown
+  Cloud, CloudOff, RefreshCw, Wifi, WifiOff, Plus, Pencil, Trash2, ChevronDown,
+  Sun, Moon, Target, Lightbulb, TrendingUp
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -21,6 +22,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     syncStatus, lastSyncedAt, forcePush, forceRefresh,
     workspacesList, activeWorkspaceId, setActiveWorkspaceId,
     addWorkspace, editWorkspace, deleteWorkspace, campaigns, assets,
+    theme, toggleTheme,
   } = useApp();
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -64,6 +66,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { id: 'kpi', label: 'KPI Dashboard', icon: <BarChart3 size={20} />, permitted: permissions.canViewKPI },
     { id: 'assets', label: 'Assets', icon: <ImageIcon size={20} />, permitted: permissions.canViewAssets },
     { id: 'settings', label: 'Settings', icon: <Settings size={20} />, permitted: permissions.canViewSettings },
+  ];
+
+  const marketingNavItems: { id: ViewType; label: string; icon: React.ReactNode; permitted: boolean }[] = [
+    { id: 'mkt-strategy', label: 'Strategy', icon: <Target size={20} />, permitted: permissions.canViewDashboard },
+    { id: 'mkt-calendar', label: 'Calendar & Campaigns', icon: <Calendar size={20} />, permitted: permissions.canViewCalendar },
+    { id: 'mkt-ideas', label: 'Growth Ideas (139)', icon: <Lightbulb size={20} />, permitted: permissions.canViewDashboard },
+    { id: 'mkt-performance', label: 'Performance Review', icon: <TrendingUp size={20} />, permitted: permissions.canViewKPI },
   ];
 
   const handleLogout = () => { setShowLogoutConfirm(false); logout(); };
@@ -149,9 +158,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="h-screen flex bg-slate-950 text-white overflow-hidden">
+    <div className={`h-screen flex overflow-hidden transition-colors duration-300 ${theme === 'light' ? 'bg-gray-50 text-slate-900' : 'bg-slate-950 text-white'}`}>
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:relative z-50 h-full bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:relative z-50 h-full ${theme === 'light' ? 'bg-white border-r border-gray-200' : 'bg-slate-900 border-r border-slate-800'} flex flex-col transition-all duration-300`}>
         <div className={`flex items-center ${sidebarOpen ? 'px-6' : 'px-4 justify-center'} h-16 border-b border-slate-800`}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center font-bold text-sm shadow-lg shadow-brand-500/20">C</div>
@@ -182,7 +191,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </button>
 
             {showWorkspacePicker && (
-              <div className="absolute left-4 right-4 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-[100] overflow-hidden animate-fade-in">
+              <div className={`absolute left-4 right-4 top-full mt-1 rounded-xl shadow-2xl z-[100] overflow-hidden animate-fade-in ${theme === 'light' ? 'bg-white border border-gray-200' : 'bg-slate-800 border border-slate-700'}`}>
                 {/* All workspaces option */}
                 <button
                   onClick={() => { setActiveWorkspaceId(null); setShowWorkspacePicker(false); }}
@@ -261,6 +270,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               )}
             </button>
           ))}
+
+          {/* Marketing Tools Section */}
+          <div className="pt-2">
+            {sidebarOpen && <p className="px-3 py-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Marketing Tools</p>}
+            {!sidebarOpen && <div className="border-t border-slate-800 my-2" />}
+            {marketingNavItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => { if (item.permitted) { setView(item.id); setMobileMenuOpen(false); } }}
+                className={`w-full flex items-center gap-3 ${sidebarOpen ? 'px-3' : 'justify-center px-2'} py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  !item.permitted ? 'text-slate-700 cursor-not-allowed' :
+                  currentView === item.id ? 'bg-emerald-600/20 text-emerald-400 shadow-sm' :
+                  'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+                title={!item.permitted ? `Your role (${currentUser?.role}) does not have access` : item.label}
+              >
+                <span className="flex-shrink-0">{item.icon}</span>
+                {sidebarOpen && <span className="flex-1 text-left">{item.label}</span>}
+                {sidebarOpen && !item.permitted && <Lock size={12} className="text-slate-700" />}
+              </button>
+            ))}
+          </div>
         </nav>
 
         {sidebarOpen && (
@@ -306,7 +337,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-slate-800 flex items-center px-4 md:px-6 gap-4 bg-slate-900/50 backdrop-blur-sm flex-shrink-0">
+        <header className={`h-16 flex items-center px-4 md:px-6 gap-4 backdrop-blur-sm flex-shrink-0 ${theme === 'light' ? 'border-b border-gray-200 bg-white/80' : 'border-b border-slate-800 bg-slate-900/50'}`}>
           <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setMobileMenuOpen(true)}><Menu size={22} /></button>
 
           <div className={`${searchOpen ? 'w-80' : 'w-64'} transition-all hidden md:block`}>
@@ -339,6 +370,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-xl transition-all duration-300 ${
+                theme === 'light'
+                  ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
+                  : 'bg-slate-800 text-slate-400 hover:text-yellow-400 hover:bg-slate-700'
+              }`}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
             {/* Sync Status */}
             <div className="hidden md:flex items-center gap-2 relative group">
               <button
@@ -389,7 +433,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </button>
 
               {showNotifications && (
-                <div className="fixed right-4 top-14 w-96 max-h-[520px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-[9999] overflow-hidden animate-fade-in" style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)' }}>
+                <div className={`fixed right-4 top-14 w-96 max-h-[520px] rounded-2xl shadow-2xl z-[9999] overflow-hidden animate-fade-in ${theme === 'light' ? 'bg-white border border-gray-200' : 'bg-slate-900 border border-slate-700'}`} style={{ boxShadow: theme === 'light' ? '0 25px 50px -12px rgba(0,0,0,0.15)' : '0 25px 50px -12px rgba(0,0,0,0.8)' }}>
                   <div className="p-4 border-b border-slate-800 flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-sm">Notifications</h3>
@@ -481,7 +525,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
-          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl animate-fade-in p-6 text-center">
+          <div className={`relative rounded-2xl w-full max-w-sm shadow-2xl animate-fade-in p-6 text-center ${theme === 'light' ? 'bg-white border border-gray-200' : 'bg-slate-900 border border-slate-700'}`}>
             <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4"><LogOut size={24} className="text-red-400" /></div>
             <h3 className="text-lg font-bold mb-2">Sign Out?</h3>
             <p className="text-sm text-slate-400 mb-6">You'll need to log in again to access your workspace.</p>
@@ -497,8 +541,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {wsModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setWsModal(null); setEditingWs(null); }} />
-          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl animate-fade-in">
-            <div className="p-6 border-b border-slate-800">
+          <div className={`relative rounded-2xl w-full max-w-md shadow-2xl animate-fade-in ${theme === 'light' ? 'bg-white border border-gray-200' : 'bg-slate-900 border border-slate-700'}`}>
+            <div className={`p-6 ${theme === 'light' ? 'border-b border-gray-200' : 'border-b border-slate-800'}`}>
               <h3 className="text-lg font-bold">{wsModal === 'create' ? 'Create New Workspace' : 'Edit Workspace'}</h3>
               <p className="text-sm text-slate-400 mt-1">
                 {wsModal === 'create' ? 'Workspaces help organise campaigns by team or department.' : 'Update workspace details.'}
@@ -555,7 +599,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {deleteConfirmWs && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteConfirmWs(null)} />
-          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl animate-fade-in p-6 text-center">
+          <div className={`relative rounded-2xl w-full max-w-sm shadow-2xl animate-fade-in p-6 text-center ${theme === 'light' ? 'bg-white border border-gray-200' : 'bg-slate-900 border border-slate-700'}`}>
             <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4"><Trash2 size={24} className="text-red-400" /></div>
             <h3 className="text-lg font-bold mb-2">Delete Workspace?</h3>
             <p className="text-sm text-slate-400 mb-2">

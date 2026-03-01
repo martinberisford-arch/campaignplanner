@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace } from '../types';
+import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace, MarketingIdea, AnalyticsEvent, KPIChannelEntry, KPITimeSeriesEntry, KPISentimentEntry } from '../types';
 import { campaigns as initialCampaigns, approvalItems as initialApprovals, assets as initialAssets, workspaces as initialWorkspaces } from '../data/mockData';
+import { MARKETING_IDEAS } from '../data/marketingIdeas';
 import { getPermissions, Permissions } from '../utils/permissions';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -108,9 +109,26 @@ interface AppState {
   deactivateUser: (id: string) => void;
   reactivateUser: (id: string) => void;
 
-  // KPI manual data
+  // KPI manual data (legacy)
   manualKpiData: Record<string, number>;
   setManualKpiData: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+
+  // KPI CRUD data with source tracking
+  kpiChannelData: KPIChannelEntry[];
+  setKpiChannelData: React.Dispatch<React.SetStateAction<KPIChannelEntry[]>>;
+  addKpiChannel: (entry: KPIChannelEntry) => void;
+  editKpiChannel: (id: string, updates: Partial<KPIChannelEntry>) => void;
+  deleteKpiChannel: (id: string) => void;
+  kpiTimeSeriesData: KPITimeSeriesEntry[];
+  setKpiTimeSeriesData: React.Dispatch<React.SetStateAction<KPITimeSeriesEntry[]>>;
+  addKpiTimeSeries: (entry: KPITimeSeriesEntry) => void;
+  editKpiTimeSeries: (id: string, updates: Partial<KPITimeSeriesEntry>) => void;
+  deleteKpiTimeSeries: (id: string) => void;
+  kpiSentimentData: KPISentimentEntry[];
+  setKpiSentimentData: React.Dispatch<React.SetStateAction<KPISentimentEntry[]>>;
+  addKpiSentiment: (entry: KPISentimentEntry) => void;
+  editKpiSentiment: (id: string, updates: Partial<KPISentimentEntry>) => void;
+  deleteKpiSentiment: (id: string) => void;
 
   // Workspaces
   workspacesList: Workspace[];
@@ -126,12 +144,24 @@ interface AppState {
   editAsset: (id: string, updates: Partial<Asset>) => void;
   deleteAsset: (id: string) => void;
 
+  // Marketing Ideas
+  marketingIdeas: MarketingIdea[];
+  setMarketingIdeas: React.Dispatch<React.SetStateAction<MarketingIdea[]>>;
+  updateMarketingIdea: (id: string, updates: Partial<MarketingIdea>) => void;
+  activateIdea: (id: string, campaignId?: string) => void;
+  analyticsEvents: AnalyticsEvent[];
+  trackEvent: (event: string, ideaId?: string, campaignId?: string, metadata?: Record<string, string>) => void;
+
   // Sync
   syncStatus: SyncStatus;
   lastSyncedAt: string | null;
   forcePush: () => void;
   forceRefresh: () => void;
   resetRemoteState: () => void;
+
+  // Theme
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -216,6 +246,11 @@ interface SharedState {
   manualKpiData: Record<string, number>;
   workspacesList: Workspace[];
   activeWorkspaceId: string | null;
+  marketingIdeas?: MarketingIdea[];
+  analyticsEvents?: AnalyticsEvent[];
+  kpiChannelData?: KPIChannelEntry[];
+  kpiTimeSeriesData?: KPITimeSeriesEntry[];
+  kpiSentimentData?: KPISentimentEntry[];
 }
 
 // ==================== PROVIDER ====================
@@ -235,6 +270,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // --- Theme (local only, persisted per-browser) ---
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const stored = localStorage.getItem('campaignos_theme');
+      return stored === 'light' ? 'light' : 'dark';
+    } catch { return 'dark'; }
+  });
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('campaignos_theme', next); } catch { /* noop */ }
+      return next;
+    });
+  }, []);
+
+  // Apply theme to document element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'light') {
+      document.documentElement.classList.add('light-theme');
+      document.documentElement.classList.remove('dark-theme');
+    } else {
+      document.documentElement.classList.add('dark-theme');
+      document.documentElement.classList.remove('light-theme');
+    }
+  }, [theme]);
+
   // --- Shared state (synced to Upstash Redis) ---
   const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
   const [approvals, setApprovals] = useState<ApprovalItem[]>(initialApprovals);
@@ -245,8 +308,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notificationSettings, setNotificationSettings] = useState<NotificationSetting[]>(defaultNotifSettings);
   const [integrations, setIntegrations] = useState<IntegrationSetting[]>(defaultIntegrations);
   const [manualKpiData, setManualKpiData] = useState<Record<string, number>>({});
+
+  // KPI CRUD data with source tracking
+  const [kpiChannelData, setKpiChannelData] = useState<KPIChannelEntry[]>([
+    { id: 'kc1', channel: 'Social Media', impressions: 4200000, clicks: 125000, conversions: 8400, spend: 42000, roi: 3.2, source: 'seed', sourceLabel: 'Demo seed data — replace with your actuals', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kc2', channel: 'Email', impressions: 890000, clicks: 78000, conversions: 5200, spend: 8500, roi: 6.1, source: 'seed', sourceLabel: 'Demo seed data — replace with your actuals', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kc3', channel: 'Paid Search', impressions: 1560000, clicks: 62000, conversions: 4100, spend: 28000, roi: 2.4, source: 'seed', sourceLabel: 'Demo seed data — replace with your actuals', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kc4', channel: 'Display', impressions: 3200000, clicks: 28000, conversions: 1200, spend: 18000, roi: 1.8, source: 'seed', sourceLabel: 'Demo seed data — replace with your actuals', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kc5', channel: 'Content', impressions: 680000, clicks: 42000, conversions: 3800, spend: 12000, roi: 4.5, source: 'seed', sourceLabel: 'Demo seed data — replace with your actuals', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kc6', channel: 'Events', impressions: 120000, clicks: 8500, conversions: 2100, spend: 35000, roi: 2.1, source: 'seed', sourceLabel: 'Demo seed data — replace with your actuals', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+  ]);
+
+  const [kpiTimeSeriesData, setKpiTimeSeriesData] = useState<KPITimeSeriesEntry[]>([
+    { id: 'kt1', week: 'W1', impressions: 450000, clicks: 12500, leads: 890, spend: 8200, applications: 1200, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kt2', week: 'W2', impressions: 620000, clicks: 18200, leads: 1340, spend: 11500, applications: 2800, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kt3', week: 'W3', impressions: 780000, clicks: 24800, leads: 1890, spend: 14200, applications: 4500, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kt4', week: 'W4', impressions: 920000, clicks: 31500, leads: 2450, spend: 16800, applications: 6200, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kt5', week: 'W5', impressions: 1050000, clicks: 36200, leads: 2980, spend: 18500, applications: 8100, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kt6', week: 'W6', impressions: 1180000, clicks: 42100, leads: 3520, spend: 21200, applications: 10400, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kt7', week: 'W7', impressions: 1320000, clicks: 48900, leads: 4100, spend: 23800, applications: 11800, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kt8', week: 'W8', impressions: 1480000, clicks: 55200, leads: 4680, spend: 26500, applications: 12840, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+  ]);
+
+  const [kpiSentimentData, setKpiSentimentData] = useState<KPISentimentEntry[]>([
+    { id: 'ks1', date: 'Jan 6', positive: 72, neutral: 20, negative: 8, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'ks2', date: 'Jan 13', positive: 68, neutral: 22, negative: 10, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'ks3', date: 'Jan 20', positive: 75, neutral: 18, negative: 7, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'ks4', date: 'Jan 27', positive: 78, neutral: 16, negative: 6, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'ks5', date: 'Feb 3', positive: 82, neutral: 13, negative: 5, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'ks6', date: 'Feb 10', positive: 80, neutral: 15, negative: 5, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+  ]);
+
   const [workspacesList, setWorkspacesList] = useState<Workspace[]>(initialWorkspaces);
   const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState<string | null>(null);
+  const [marketingIdeas, setMarketingIdeas] = useState<MarketingIdea[]>(MARKETING_IDEAS);
+  const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([]);
 
   // --- Sync state ---
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -286,6 +382,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     manualKpiData,
     workspacesList,
     activeWorkspaceId: activeWorkspaceId,
+    marketingIdeas,
+    analyticsEvents,
+    kpiChannelData,
+    kpiTimeSeriesData,
+    kpiSentimentData,
   };
 
   const permissions = currentUser ? getPermissions(currentUser.role) : viewerPermissions;
@@ -310,6 +411,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (state.manualKpiData !== undefined) setManualKpiData(state.manualKpiData);
     if (state.workspacesList) setWorkspacesList(state.workspacesList);
     if (state.activeWorkspaceId !== undefined) setActiveWorkspaceIdRaw(state.activeWorkspaceId);
+    if (state.marketingIdeas) setMarketingIdeas(state.marketingIdeas);
+    if (state.analyticsEvents) setAnalyticsEvents(state.analyticsEvents);
+    if (state.kpiChannelData) setKpiChannelData(state.kpiChannelData);
+    if (state.kpiTimeSeriesData) setKpiTimeSeriesData(state.kpiTimeSeriesData);
+    if (state.kpiSentimentData) setKpiSentimentData(state.kpiSentimentData);
   }, []);
 
   const pushToServer = useCallback(async () => {
@@ -406,7 +512,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     schedulePush();
-  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, schedulePush]);
+  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, schedulePush]);
 
   // --- Poll for remote changes ---
   useEffect(() => {
@@ -642,6 +748,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAssets(prev => prev.filter(a => a.id !== id));
   }, []);
 
+  // ==================== KPI CRUD ====================
+
+  const addKpiChannel = useCallback((entry: KPIChannelEntry) => {
+    setKpiChannelData(prev => [...prev, entry]);
+  }, []);
+  const editKpiChannel = useCallback((id: string, updates: Partial<KPIChannelEntry>) => {
+    setKpiChannelData(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  }, []);
+  const deleteKpiChannel = useCallback((id: string) => {
+    setKpiChannelData(prev => prev.filter(e => e.id !== id));
+  }, []);
+  const addKpiTimeSeries = useCallback((entry: KPITimeSeriesEntry) => {
+    setKpiTimeSeriesData(prev => [...prev, entry]);
+  }, []);
+  const editKpiTimeSeries = useCallback((id: string, updates: Partial<KPITimeSeriesEntry>) => {
+    setKpiTimeSeriesData(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  }, []);
+  const deleteKpiTimeSeries = useCallback((id: string) => {
+    setKpiTimeSeriesData(prev => prev.filter(e => e.id !== id));
+  }, []);
+  const addKpiSentiment = useCallback((entry: KPISentimentEntry) => {
+    setKpiSentimentData(prev => [...prev, entry]);
+  }, []);
+  const editKpiSentiment = useCallback((id: string, updates: Partial<KPISentimentEntry>) => {
+    setKpiSentimentData(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  }, []);
+  const deleteKpiSentiment = useCallback((id: string) => {
+    setKpiSentimentData(prev => prev.filter(e => e.id !== id));
+  }, []);
+
+  // ==================== MARKETING IDEAS ====================
+
+  const updateMarketingIdea = useCallback((id: string, updates: Partial<MarketingIdea>) => {
+    setMarketingIdeas(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+  }, []);
+
+  const activateIdea = useCallback((id: string, campaignId?: string) => {
+    setMarketingIdeas(prev => prev.map(i =>
+      i.id === id ? { ...i, status: 'activated' as const, activatedAt: new Date().toISOString(), campaignId } : i
+    ));
+  }, []);
+
+  const trackEvent = useCallback((event: string, ideaId?: string, campaignId?: string, metadata?: Record<string, string>) => {
+    setAnalyticsEvents(prev => [...prev, {
+      event, ideaId, campaignId,
+      timestamp: new Date().toISOString(),
+      metadata: metadata || {},
+    }]);
+  }, []);
+
   // ==================== SYNC CONTROLS (exposed) ====================
 
   const forcePush = useCallback(() => {
@@ -697,6 +853,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addWorkspace, editWorkspace, deleteWorkspace,
       addAsset, editAsset, deleteAsset,
       syncStatus, lastSyncedAt, forcePush, forceRefresh, resetRemoteState,
+      theme, toggleTheme,
+      marketingIdeas, setMarketingIdeas, updateMarketingIdea, activateIdea,
+      analyticsEvents, trackEvent,
+      kpiChannelData, setKpiChannelData, addKpiChannel, editKpiChannel, deleteKpiChannel,
+      kpiTimeSeriesData, setKpiTimeSeriesData, addKpiTimeSeries, editKpiTimeSeries, deleteKpiTimeSeries,
+      kpiSentimentData, setKpiSentimentData, addKpiSentiment, editKpiSentiment, deleteKpiSentiment,
     }}>
       {children}
     </AppContext.Provider>
