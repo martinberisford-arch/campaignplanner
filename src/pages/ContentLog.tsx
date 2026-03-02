@@ -159,19 +159,19 @@ export default function ContentLog() {
             </div>
             Content Log
           </h1>
-          <p className="text-gray-400 mt-1">Log published content to train the adaptive ideation engine</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Log published content to train the adaptive ideation engine</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowInsights(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-colors font-medium text-sm"
           >
             <Brain className="w-4 h-4" />
             System Learning
           </button>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors font-medium text-sm"
           >
             <Plus className="w-4 h-4" />
             Log Content
@@ -181,26 +181,26 @@ export default function ContentLog() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="p-4 rounded-xl bg-gray-800/50 border border-gray-700/50">
-          <div className="text-sm text-gray-400">Total Logged</div>
-          <div className="text-2xl font-bold">{publishedContent.length}</div>
+        <div className="p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-sm">
+          <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Logged</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{publishedContent.length}</div>
         </div>
-        <div className="p-4 rounded-xl bg-gray-800/50 border border-gray-700/50">
-          <div className="text-sm text-gray-400">Patterns Learned</div>
-          <div className="text-2xl font-bold text-purple-400">{contentPatterns.length}</div>
+        <div className="p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-sm">
+          <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Patterns Learned</div>
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{contentPatterns.length}</div>
         </div>
-        <div className="p-4 rounded-xl bg-gray-800/50 border border-gray-700/50">
-          <div className="text-sm text-gray-400">Avg Engagement</div>
-          <div className="text-2xl font-bold text-green-400">
+        <div className="p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-sm">
+          <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Avg Engagement</div>
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {publishedContent.length > 0
               ? (publishedContent.filter(c => c.engagementScore).reduce((sum, c) => sum + (c.engagementScore || 0), 0) /
                   publishedContent.filter(c => c.engagementScore).length || 0).toFixed(1)
               : 0}%
           </div>
         </div>
-        <div className="p-4 rounded-xl bg-gray-800/50 border border-gray-700/50">
-          <div className="text-sm text-gray-400">Avg Conversion</div>
-          <div className="text-2xl font-bold text-blue-400">
+        <div className="p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-sm">
+          <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Avg Conversion</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
             {publishedContent.length > 0
               ? (publishedContent.filter(c => c.conversionRate).reduce((sum, c) => sum + (c.conversionRate || 0), 0) /
                   publishedContent.filter(c => c.conversionRate).length || 0).toFixed(1)
@@ -211,10 +211,10 @@ export default function ContentLog() {
 
       {/* Content List */}
       {publishedContent.length === 0 ? (
-        <div className="text-center py-16 bg-gray-800/30 rounded-xl border border-gray-700/50">
-          <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No content logged yet</h3>
-          <p className="text-gray-500 mb-4 max-w-md mx-auto">
+        <div className="text-center py-16 bg-white dark:bg-slate-800/30 rounded-xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
+          <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2 text-slate-800 dark:text-white">No content logged yet</h3>
+          <p className="text-slate-500 dark:text-slate-400 mb-4 max-w-md mx-auto">
             Start logging your published content to build the learning engine. 
             The system will learn from your performance data and improve idea recommendations.
           </p>
@@ -229,35 +229,35 @@ export default function ContentLog() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-700">
-                <th className="text-left py-3 px-4 font-medium text-gray-400">Title</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-400">Format</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-400">Channel</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-400">Audience</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-400">KPI</th>
-                <th className="text-center py-3 px-4 font-medium text-gray-400">Eng %</th>
-                <th className="text-center py-3 px-4 font-medium text-gray-400">Conv %</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-400">Date</th>
-                <th className="text-right py-3 px-4 font-medium text-gray-400">Actions</th>
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <th className="text-left py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">Title</th>
+                <th className="text-left py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">Format</th>
+                <th className="text-left py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">Channel</th>
+                <th className="text-left py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">Audience</th>
+                <th className="text-left py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">KPI</th>
+                <th className="text-center py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">Eng %</th>
+                <th className="text-center py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">Conv %</th>
+                <th className="text-left py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">Date</th>
+                <th className="text-right py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">Actions</th>
               </tr>
             </thead>
             <tbody>
               {publishedContent.map(content => (
-                <tr key={content.id} className="border-b border-gray-800 hover:bg-gray-800/30">
+                <tr key={content.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3 px-4">
-                    <div className="font-medium">{content.title}</div>
+                    <div className="font-medium text-slate-800 dark:text-white">{content.title}</div>
                     {content.theme && (
-                      <div className="text-xs text-gray-500">Theme: {content.theme}</div>
+                      <div className="text-xs text-slate-400 dark:text-slate-500">Theme: {content.theme}</div>
                     )}
                   </td>
                   <td className="py-3 px-4">
-                    <span className="px-2 py-1 rounded bg-gray-700/50 text-xs capitalize">
+                    <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-xs capitalize font-medium">
                       {content.format}
                     </span>
                   </td>
-                  <td className="py-3 px-4 capitalize">{content.channel}</td>
-                  <td className="py-3 px-4">{getAudienceName(content.audienceId)}</td>
-                  <td className="py-3 px-4">{getKpiName(content.kpiId)}</td>
+                  <td className="py-3 px-4 capitalize text-slate-600 dark:text-slate-300">{content.channel}</td>
+                  <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{getAudienceName(content.audienceId)}</td>
+                  <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{getKpiName(content.kpiId)}</td>
                   <td className="py-3 px-4 text-center">
                     {content.engagementScore !== undefined ? (
                       <span className={content.engagementScore >= 50 ? 'text-green-400' : content.engagementScore >= 25 ? 'text-amber-400' : 'text-red-400'}>
@@ -272,21 +272,21 @@ export default function ContentLog() {
                       </span>
                     ) : '-'}
                   </td>
-                  <td className="py-3 px-4">{new Date(content.publishDate).toLocaleDateString()}</td>
+                  <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{new Date(content.publishDate).toLocaleDateString()}</td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => openEdit(content)}
-                        className="p-1.5 rounded hover:bg-gray-700 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                       >
-                        <Pencil className="w-4 h-4 text-gray-400" />
+                        <Pencil className="w-4 h-4 text-slate-400" />
                       </button>
                       {permissions.canDeleteCampaign && (
                         <button
                           onClick={() => setConfirmDelete(content.id)}
-                          className="p-1.5 rounded hover:bg-gray-700 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-slate-700 transition-colors"
                         >
-                          <Trash2 className="w-4 h-4 text-red-400" />
+                          <Trash2 className="w-4 h-4 text-red-500" />
                         </button>
                       )}
                     </div>
