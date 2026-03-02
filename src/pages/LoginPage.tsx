@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
+import { GlowingEffect } from '../components/ui/GlowingEffect';
 import { Shield, Eye, EyeOff, Zap, Lock, Users, BarChart3, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
@@ -86,7 +87,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
+    <div className="min-h-screen bg-slate-950 flex" style={{ background: 'radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%), #020617' }}>
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 via-brand-950 to-slate-900 flex-col justify-between p-12 relative overflow-hidden">
         {/* Background effect */}
@@ -102,7 +103,7 @@ export default function LoginPage() {
               C
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">CampaignOS</h1>
+              <h1 className="text-2xl font-bold text-white">Comms Dashboard</h1>
               <p className="text-xs text-slate-500 font-medium tracking-wider uppercase">Enterprise Campaign Platform</p>
             </div>
           </div>
@@ -123,11 +124,19 @@ export default function LoginPage() {
               { icon: <BarChart3 size={18} />, title: 'KPI Dashboards', desc: 'Real-time performance tracking with AI insights' },
               { icon: <Shield size={18} />, title: 'Enterprise Security', desc: 'UK GDPR compliant, ISO 27001 ready, role-based access' },
             ].map((feature, i) => (
-              <div key={i} className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/30 border border-slate-800/50">
-                <div className="w-9 h-9 rounded-lg bg-brand-600/20 flex items-center justify-center text-brand-400 flex-shrink-0">
+              <div key={i} className="relative flex items-start gap-4 p-4 rounded-xl bg-slate-800/30 border border-slate-800/50">
+                <GlowingEffect
+                  spread={40}
+                  glow={true}
+                  disabled={false}
+                  proximity={60}
+                  inactiveZone={0.01}
+                  borderWidth={2}
+                />
+                <div className="relative z-10 w-9 h-9 rounded-lg bg-brand-600/20 flex items-center justify-center text-brand-400 flex-shrink-0">
                   {feature.icon}
                 </div>
-                <div>
+                <div className="relative z-10">
                   <p className="text-sm font-semibold text-white">{feature.title}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{feature.desc}</p>
                 </div>
@@ -138,7 +147,7 @@ export default function LoginPage() {
 
         <div className="relative">
           <p className="text-[11px] text-slate-600">
-            © 2025 CampaignOS · UK GDPR Compliant · ISO 27001 Ready · SOC 2 Type II
+            © 2025 Comms Dashboard · UK GDPR Compliant · ISO 27001 Ready · SOC 2 Type II
           </p>
         </div>
       </div>
@@ -152,7 +161,7 @@ export default function LoginPage() {
               C
             </div>
             <div>
-              <h1 className="text-xl font-bold">CampaignOS</h1>
+              <h1 className="text-xl font-bold">Comms Dashboard</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-wider">Enterprise</p>
             </div>
           </div>
@@ -161,7 +170,7 @@ export default function LoginPage() {
             <div className="animate-fade-in">
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-white">Welcome back</h2>
-                <p className="text-sm text-slate-400 mt-2">Sign in to your CampaignOS workspace</p>
+                <p className="text-sm text-slate-400 mt-2">Sign in to your Comms Dashboard workspace</p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-5">

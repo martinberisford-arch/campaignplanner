@@ -1,4 +1,4 @@
-export type ViewType = 'dashboard' | 'calendar' | 'campaigns' | 'ai-brief' | 'approvals' | 'kpi' | 'assets' | 'settings' | 'campaign-detail' | 'login' | 'user-management' | 'mkt-strategy' | 'mkt-calendar' | 'mkt-ideas' | 'mkt-performance';
+export type ViewType = 'dashboard' | 'hub' | 'calendar' | 'campaigns' | 'ai-brief' | 'approvals' | 'kpi' | 'assets' | 'settings' | 'campaign-detail' | 'login' | 'user-management' | 'mkt-strategy' | 'mkt-calendar' | 'mkt-ideas' | 'mkt-performance' | 'admin-tools' | 'mkt-intelligence' | 'mkt-ideation' | 'mkt-brief' | 'mkt-messaging' | 'admin-kpis' | 'admin-audiences' | 'content-log' | 'backups';
 
 export type BoardView = 'kanban' | 'list' | 'table' | 'timeline';
 
@@ -301,6 +301,31 @@ export interface KPISentimentEntry {
   addedBy: string;
 }
 
+// ===== TOOL REGISTRY =====
+
+export interface Tool {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  route?: ViewType;
+  externalUrl?: string;
+  isExternal: boolean;
+  isEnabled: boolean;
+  displayOrder: number;
+  badge?: string;
+  badgeColor?: string;
+  category: 'core' | 'marketing' | 'analytics' | 'admin' | 'external';
+  toolMetrics?: {
+    count?: number;
+    trend?: number;
+    lastUpdated?: string;
+    label?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ===== NOTIFICATIONS =====
 
 export interface AppNotification {
@@ -313,4 +338,187 @@ export interface AppNotification {
   link?: ViewType;
   campaignId?: string;
   icon?: string;
+}
+
+// ===== MARKETING INTELLIGENCE SYSTEM =====
+
+export type InsightCategory = 'campaign' | 'referral' | 'engagement' | 'benchmark' | 'content' | 'audience';
+
+export interface Insight {
+  id: string;
+  title: string;
+  summary: string;
+  category: InsightCategory;
+  relatedIdeaId?: string;
+  relatedKpi?: string;
+  relatedCampaignId?: string;
+  confidence: number; // 0-1
+  mentalModel?: string;
+  actionable: boolean;
+  action?: string;
+  createdAt: string;
+}
+
+export interface LearningLog {
+  id: string;
+  campaignId?: string;
+  outcome: 'worked' | 'underperformed' | 'neutral';
+  reasoning: string;
+  behaviouralModel?: string;
+  metrics?: { kpi: string; expected: number; actual: number }[];
+  createdAt: string;
+}
+
+export type ContentFormat = 'blog' | 'email' | 'social' | 'carousel' | 'video' | 'newsletter' | 'press-release' | 'case-study';
+
+export interface ContentIdea {
+  id: string;
+  title: string;
+  description: string;
+  format: ContentFormat;
+  audience: string;
+  kpiGoal: string;
+  relatedIdeaId: string;
+  mentalModel?: string;
+  suggestedCTA: string;
+  engagementScore: number; // 1-10
+  awarenessEvent?: string;
+  createdAt: string;
+  status: 'draft' | 'selected' | 'briefed' | 'published';
+}
+
+export interface ContentBrief {
+  id: string;
+  ideaId: string;
+  headline: string;
+  outline: { section: string; content: string }[];
+  keyTalkingPoints: string[];
+  cta: string;
+  assetsNeeded: string[];
+  suggestedChannel: string;
+  kpiTarget: string;
+  croChecklist: { item: string; completed: boolean }[];
+  createdAt: string;
+  status: 'draft' | 'approved' | 'published';
+}
+
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  type: 'sms' | 'whatsapp';
+  baseStructure: string;
+  charLimit: number;
+  placeholders: string[];
+  createdAt: string;
+}
+
+export interface GeneratedMessage {
+  id: string;
+  templateId: string;
+  urlSource: string;
+  extractedData: Record<string, string>;
+  finalMessage: string;
+  charCount: number;
+  predictedEngagement: number; // 1-100
+  ctaStrength: 'weak' | 'medium' | 'strong';
+  createdAt: string;
+}
+
+export interface AwarenessEvent {
+  id: string;
+  name: string;
+  date: string;
+  endDate?: string;
+  category: string;
+  description: string;
+  suggestedIdeas: string[];
+}
+
+// ===== ADAPTIVE IDEATION ENGINE =====
+
+export type KPICategory = 'awareness' | 'engagement' | 'conversion' | 'retention';
+export type AudienceType = 'internal' | 'external' | 'clinical' | 'public' | 'provider' | 'partner';
+
+export interface EditableKPI {
+  id: string;
+  name: string;
+  description?: string;
+  category: KPICategory;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EditableAudience {
+  id: string;
+  name: string;
+  description?: string;
+  type: AudienceType;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublishedContent {
+  id: string;
+  title: string;
+  format: ContentFormat;
+  audienceId?: string;
+  kpiId?: string;
+  campaignId?: string;
+  channel: 'email' | 'linkedin' | 'website' | 'whatsapp' | 'twitter' | 'facebook' | 'instagram' | 'newsletter' | 'other';
+  publishDate: string;
+  engagementScore?: number; // 0-100
+  conversionRate?: number; // 0-100
+  referralImpact?: number; // 0-100
+  theme?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface ContentPattern {
+  id: string;
+  theme: string;
+  format: ContentFormat;
+  audienceId?: string;
+  kpiId?: string;
+  avgEngagement: number;
+  avgConversion: number;
+  avgReferral: number;
+  usageCount: number;
+  weightScore: number;
+  lastUpdated: string;
+  decayApplied?: boolean;
+}
+
+// ===== BACKUP & RESTORE =====
+
+export type BackupRestoreMode = 'dry-run' | 'merge' | 'full-replace';
+
+export interface BackupLog {
+  id: string;
+  type: 'export' | 'import';
+  mode?: BackupRestoreMode;
+  status: 'success' | 'failed' | 'dry-run';
+  recordCounts?: Record<string, number>;
+  performedBy: string;
+  fileName?: string;
+  checksum?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface BackupMetadata {
+  version: string;
+  appSchemaVersion: string;
+  generatedAt: string;
+  appVersion: string;
+  checksum: string;
+  recordCounts: Record<string, number>;
+  includesLearningPatterns: boolean;
+}
+
+export interface BackupFile {
+  metadata: BackupMetadata;
+  data: Record<string, unknown[]>;
 }

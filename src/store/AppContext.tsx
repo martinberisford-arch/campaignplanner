@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace, MarketingIdea, AnalyticsEvent, KPIChannelEntry, KPITimeSeriesEntry, KPISentimentEntry } from '../types';
+import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace, MarketingIdea, AnalyticsEvent, KPIChannelEntry, KPITimeSeriesEntry, KPISentimentEntry, Tool, EditableKPI, EditableAudience, PublishedContent, ContentPattern, BackupLog } from '../types';
+import { updateOrCreatePattern } from '../utils/adaptiveEngine';
 import { campaigns as initialCampaigns, approvalItems as initialApprovals, assets as initialAssets, workspaces as initialWorkspaces } from '../data/mockData';
 import { MARKETING_IDEAS } from '../data/marketingIdeas';
 import { getPermissions, Permissions } from '../utils/permissions';
@@ -162,6 +163,50 @@ interface AppState {
   // Theme
   theme: 'dark' | 'light';
   toggleTheme: () => void;
+
+  // Tool Registry
+  tools: Tool[];
+  setTools: React.Dispatch<React.SetStateAction<Tool[]>>;
+  addTool: (tool: Tool) => void;
+  editTool: (id: string, updates: Partial<Tool>) => void;
+  deleteTool: (id: string) => void;
+  reorderTools: (tools: Tool[]) => void;
+
+  // AI Command log
+  aiCommandLog: string[];
+  addAiCommand: (cmd: string) => void;
+
+  // Adaptive Ideation Engine
+  editableKpis: EditableKPI[];
+  setEditableKpis: React.Dispatch<React.SetStateAction<EditableKPI[]>>;
+  addEditableKpi: (kpi: EditableKPI) => void;
+  updateEditableKpi: (id: string, updates: Partial<EditableKPI>) => void;
+  archiveEditableKpi: (id: string) => void;
+  restoreEditableKpi: (id: string) => void;
+
+  editableAudiences: EditableAudience[];
+  setEditableAudiences: React.Dispatch<React.SetStateAction<EditableAudience[]>>;
+  addEditableAudience: (audience: EditableAudience) => void;
+  updateEditableAudience: (id: string, updates: Partial<EditableAudience>) => void;
+  archiveEditableAudience: (id: string) => void;
+  restoreEditableAudience: (id: string) => void;
+
+  publishedContent: PublishedContent[];
+  setPublishedContent: React.Dispatch<React.SetStateAction<PublishedContent[]>>;
+  addPublishedContent: (content: PublishedContent) => void;
+  updatePublishedContent: (id: string, updates: Partial<PublishedContent>) => void;
+  deletePublishedContent: (id: string) => void;
+
+  contentPatterns: ContentPattern[];
+  setContentPatterns: React.Dispatch<React.SetStateAction<ContentPattern[]>>;
+  resetContentPatterns: () => void;
+
+  // Backup & Restore
+  backupLogs: BackupLog[];
+  addBackupLog: (log: BackupLog) => void;
+  getBackupData: (includeLearning: boolean) => Record<string, unknown[]>;
+  restoreMerge: (data: Record<string, unknown[]>) => void;
+  restoreFullReplace: (data: Record<string, unknown[]>) => void;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -231,6 +276,47 @@ function saveAuth(userId: string | null) {
 
 const viewerPermissions = getPermissions('viewer');
 
+const defaultTools: Tool[] = [
+  { id: 't1', title: 'Campaign Manager', description: 'Create, manage and track campaigns across channels with Kanban boards, timelines and Gantt views.', icon: 'FolderKanban', route: 'campaigns', isExternal: false, isEnabled: true, displayOrder: 0, category: 'core', badge: undefined, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't2', title: 'AI Brief Generator', description: 'Generate complete campaign briefs from plain English prompts. No marketing jargon needed.', icon: 'Sparkles', route: 'ai-brief', isExternal: false, isEnabled: true, displayOrder: 1, category: 'core', badge: 'AI', badgeColor: 'violet', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't3', title: 'Campaign Calendar', description: 'Visual monthly calendar and timeline view of all campaigns with drag-and-drop scheduling.', icon: 'Calendar', route: 'calendar', isExternal: false, isEnabled: true, displayOrder: 2, category: 'core', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't4', title: 'Approval Workflows', description: 'Submit campaigns for review, track approvals, and maintain full audit trails for governance.', icon: 'CheckCircle2', route: 'approvals', isExternal: false, isEnabled: true, displayOrder: 3, category: 'core', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't5', title: 'KPI Dashboard', description: 'Track impressions, clicks, conversions and ROI across channels. Add data manually or via integrations.', icon: 'BarChart3', route: 'kpi', isExternal: false, isEnabled: true, displayOrder: 4, category: 'analytics', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't6', title: 'Asset Library', description: 'Central repository for campaign visuals, documents, guidelines and brand assets with AI tagging.', icon: 'ImageIcon', route: 'assets', isExternal: false, isEnabled: true, displayOrder: 5, category: 'core', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't7', title: 'Marketing Strategy', description: 'Growth coverage radar, strategic recommendations engine, and KPI alignment matrix.', icon: 'Target', route: 'mkt-strategy', isExternal: false, isEnabled: true, displayOrder: 6, category: 'marketing', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't8', title: 'Growth Ideas (139)', description: 'Browse 139 proven marketing ideas, filtered by budget, timeline and category. Activate directly into campaigns.', icon: 'Lightbulb', route: 'mkt-ideas', isExternal: false, isEnabled: true, displayOrder: 7, category: 'marketing', badge: '139', badgeColor: 'amber', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't9', title: 'Marketing Calendar', description: 'Awareness days, campaign scheduling and intelligence panel with past performance context.', icon: 'CalendarDays', route: 'mkt-calendar', isExternal: false, isEnabled: true, displayOrder: 8, category: 'marketing', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't10', title: 'Performance Review', description: 'KPI trends vs targets, idea effectiveness rankings, and campaign ROI proxy analysis.', icon: 'TrendingUp', route: 'mkt-performance', isExternal: false, isEnabled: true, displayOrder: 9, category: 'analytics', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't11', title: 'Settings & Admin', description: 'Workspace settings, team management, integrations, security and compliance configuration.', icon: 'Settings', route: 'settings', isExternal: false, isEnabled: true, displayOrder: 10, category: 'admin', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't12', title: 'NHS England Hub', description: 'Access the NHS England intranet for brand guidelines, policies and central communications.', icon: 'ExternalLink', externalUrl: 'https://www.england.nhs.uk', isExternal: true, isEnabled: true, displayOrder: 11, category: 'external', badge: 'External', badgeColor: 'blue', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't13', title: 'GCS Resources', description: 'Government Communication Service frameworks, templates and campaign planning toolkits.', icon: 'ExternalLink', externalUrl: 'https://gcs.civilservice.gov.uk', isExternal: true, isEnabled: true, displayOrder: 12, category: 'external', badge: 'External', badgeColor: 'blue', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 't14', title: 'Canva', description: 'Design social media graphics, presentations and campaign visuals with your brand kit.', icon: 'Palette', externalUrl: 'https://www.canva.com', isExternal: true, isEnabled: true, displayOrder: 13, category: 'external', badge: 'External', badgeColor: 'teal', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+];
+
+const defaultEditableKpis: EditableKPI[] = [
+  { id: 'ek1', name: 'Website Traffic', description: 'Number of unique visitors to campaign landing pages', category: 'awareness', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ek2', name: 'Social Reach', description: 'Total reach across all social media platforms', category: 'awareness', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ek3', name: 'Email Open Rate', description: 'Percentage of recipients who opened campaign emails', category: 'engagement', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ek4', name: 'Click-Through Rate', description: 'Percentage of viewers who clicked on campaign CTAs', category: 'engagement', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ek5', name: 'Lead Generation', description: 'Number of new leads captured through campaigns', category: 'conversion', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ek6', name: 'Application Submissions', description: 'Number of completed applications or sign-ups', category: 'conversion', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ek7', name: 'Return Visitors', description: 'Percentage of visitors who return within 30 days', category: 'retention', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ek8', name: 'Newsletter Retention', description: 'Percentage of subscribers who remain subscribed over 6 months', category: 'retention', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ek9', name: 'Referral Rate', description: 'Percentage of users who refer others to the service', category: 'conversion', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ek10', name: 'Event Attendance', description: 'Number of attendees at campaign events', category: 'engagement', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+];
+
+const defaultEditableAudiences: EditableAudience[] = [
+  { id: 'ea1', name: 'Healthcare Professionals', description: 'Doctors, nurses, and clinical staff', type: 'clinical', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ea2', name: 'General Public', description: 'Members of the public and potential service users', type: 'public', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ea3', name: 'NHS Staff', description: 'Internal NHS employees across all departments', type: 'internal', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ea4', name: 'Partner Organisations', description: 'ICS partners, local authorities, and third sector', type: 'partner', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ea5', name: 'Care Providers', description: 'Social care providers and care home operators', type: 'provider', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ea6', name: 'Job Seekers', description: 'People looking for careers in healthcare', type: 'external', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ea7', name: 'Students', description: 'University and college students considering healthcare careers', type: 'external', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+  { id: 'ea8', name: 'Volunteers', description: 'Current and potential NHS volunteers', type: 'external', isActive: true, createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+];
+
 // ==================== SHARED STATE SHAPE ====================
 // This is what gets persisted to Upstash Redis and synced across browsers.
 
@@ -251,6 +337,12 @@ interface SharedState {
   kpiChannelData?: KPIChannelEntry[];
   kpiTimeSeriesData?: KPITimeSeriesEntry[];
   kpiSentimentData?: KPISentimentEntry[];
+  tools?: Tool[];
+  editableKpis?: EditableKPI[];
+  editableAudiences?: EditableAudience[];
+  publishedContent?: PublishedContent[];
+  contentPatterns?: ContentPattern[];
+  backupLogs?: BackupLog[];
 }
 
 // ==================== PROVIDER ====================
@@ -266,7 +358,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return null;
   });
   const [isAuthenticated, setIsAuthenticated] = useState(!!currentUser);
-  const [currentView, setCurrentView] = useState<ViewType>(currentUser ? 'dashboard' : 'login');
+  const [currentView, setCurrentView] = useState<ViewType>(currentUser ? 'hub' : 'login');
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -343,6 +435,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState<string | null>(null);
   const [marketingIdeas, setMarketingIdeas] = useState<MarketingIdea[]>(MARKETING_IDEAS);
   const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([]);
+  const [tools, setTools] = useState<Tool[]>(defaultTools);
+  const [aiCommandLog, setAiCommandLog] = useState<string[]>([]);
+
+  // Adaptive Ideation Engine state
+  const [editableKpis, setEditableKpis] = useState<EditableKPI[]>(defaultEditableKpis);
+  const [editableAudiences, setEditableAudiences] = useState<EditableAudience[]>(defaultEditableAudiences);
+  const [publishedContent, setPublishedContent] = useState<PublishedContent[]>([]);
+  const [contentPatterns, setContentPatterns] = useState<ContentPattern[]>([]);
+  const [backupLogs, setBackupLogs] = useState<BackupLog[]>([]);
 
   // --- Sync state ---
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -387,6 +488,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     kpiChannelData,
     kpiTimeSeriesData,
     kpiSentimentData,
+    tools,
+    editableKpis,
+    editableAudiences,
+    publishedContent,
+    contentPatterns,
+    backupLogs,
   };
 
   const permissions = currentUser ? getPermissions(currentUser.role) : viewerPermissions;
@@ -416,6 +523,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (state.kpiChannelData) setKpiChannelData(state.kpiChannelData);
     if (state.kpiTimeSeriesData) setKpiTimeSeriesData(state.kpiTimeSeriesData);
     if (state.kpiSentimentData) setKpiSentimentData(state.kpiSentimentData);
+    if (state.tools) setTools(state.tools);
+    if (state.editableKpis) setEditableKpis(state.editableKpis);
+    if (state.editableAudiences) setEditableAudiences(state.editableAudiences);
+    if (state.publishedContent) setPublishedContent(state.publishedContent);
+    if (state.contentPatterns) setContentPatterns(state.contentPatterns);
+    if (state.backupLogs) setBackupLogs(state.backupLogs);
   }, []);
 
   const pushToServer = useCallback(async () => {
@@ -483,7 +596,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (syncedUser) {
               setCurrentUser(syncedUser);
               setIsAuthenticated(true);
-              setCurrentView('dashboard');
+              setCurrentView('hub');
             }
           }
         } else if (data.empty) {
@@ -512,7 +625,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     schedulePush();
-  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, schedulePush]);
+  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, tools, editableKpis, editableAudiences, publishedContent, contentPatterns, backupLogs, schedulePush]);
 
   // --- Poll for remote changes ---
   useEffect(() => {
@@ -559,7 +672,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTeamMembersRaw(prev => prev.map(u => u.id === user.id ? updatedUser : u));
     setCurrentUser(updatedUser);
     setIsAuthenticated(true);
-    setCurrentView('dashboard');
+    setCurrentView('hub');
     saveAuth(user.id);
     return { success: true };
   }, [teamMembers]);
@@ -798,6 +911,290 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }]);
   }, []);
 
+  // ==================== TOOL REGISTRY CRUD ====================
+
+  const addTool = useCallback((tool: Tool) => {
+    setTools(prev => [...prev, tool]);
+  }, []);
+
+  const editTool = useCallback((id: string, updates: Partial<Tool>) => {
+    setTools(prev => prev.map(t => t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t));
+  }, []);
+
+  const deleteTool = useCallback((id: string) => {
+    setTools(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const reorderTools = useCallback((reorderedTools: Tool[]) => {
+    setTools(reorderedTools.map((t, i) => ({ ...t, displayOrder: i })));
+  }, []);
+
+  const addAiCommand = useCallback((cmd: string) => {
+    setAiCommandLog(prev => [cmd, ...prev].slice(0, 50));
+  }, []);
+
+  // ==================== ADAPTIVE IDEATION CRUD ====================
+
+  const addEditableKpi = useCallback((kpi: EditableKPI) => {
+    setEditableKpis(prev => [...prev, kpi]);
+  }, []);
+
+  const updateEditableKpi = useCallback((id: string, updates: Partial<EditableKPI>) => {
+    setEditableKpis(prev => prev.map(k => k.id === id ? { ...k, ...updates, updatedAt: new Date().toISOString() } : k));
+  }, []);
+
+  const archiveEditableKpi = useCallback((id: string) => {
+    setEditableKpis(prev => prev.map(k => k.id === id ? { ...k, isActive: false, updatedAt: new Date().toISOString() } : k));
+  }, []);
+
+  const restoreEditableKpi = useCallback((id: string) => {
+    setEditableKpis(prev => prev.map(k => k.id === id ? { ...k, isActive: true, updatedAt: new Date().toISOString() } : k));
+  }, []);
+
+  const addEditableAudience = useCallback((audience: EditableAudience) => {
+    setEditableAudiences(prev => [...prev, audience]);
+  }, []);
+
+  const updateEditableAudience = useCallback((id: string, updates: Partial<EditableAudience>) => {
+    setEditableAudiences(prev => prev.map(a => a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString() } : a));
+  }, []);
+
+  const archiveEditableAudience = useCallback((id: string) => {
+    setEditableAudiences(prev => prev.map(a => a.id === id ? { ...a, isActive: false, updatedAt: new Date().toISOString() } : a));
+  }, []);
+
+  const restoreEditableAudience = useCallback((id: string) => {
+    setEditableAudiences(prev => prev.map(a => a.id === id ? { ...a, isActive: true, updatedAt: new Date().toISOString() } : a));
+  }, []);
+
+  const addPublishedContent = useCallback((content: PublishedContent) => {
+    setPublishedContent(prev => [content, ...prev]);
+    // Trigger pattern recalculation
+    if (content.theme) {
+      setContentPatterns(prev => updateOrCreatePattern(prev, content, content.theme!));
+    }
+  }, []);
+
+  const updatePublishedContent = useCallback((id: string, updates: Partial<PublishedContent>) => {
+    setPublishedContent(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+  }, []);
+
+  const deletePublishedContent = useCallback((id: string) => {
+    setPublishedContent(prev => prev.filter(c => c.id !== id));
+  }, []);
+
+  const resetContentPatterns = useCallback(() => {
+    setContentPatterns([]);
+  }, []);
+
+  // ==================== BACKUP & RESTORE ====================
+
+  const addBackupLog = useCallback((log: BackupLog) => {
+    setBackupLogs(prev => [log, ...prev]);
+  }, []);
+
+  const getBackupData = useCallback((includeLearning: boolean): Record<string, unknown[]> => {
+    const data: Record<string, unknown[]> = {
+      campaigns,
+      approvals,
+      assets,
+      workspacesList,
+      tools,
+      editableKpis,
+      editableAudiences,
+      kpiChannelData,
+      kpiTimeSeriesData,
+      kpiSentimentData,
+      marketingIdeas,
+      publishedContent,
+    };
+    if (includeLearning) {
+      data.contentPatterns = contentPatterns;
+      data.analyticsEvents = analyticsEvents;
+    }
+    return data;
+  }, [campaigns, approvals, assets, workspacesList, tools, editableKpis, editableAudiences, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, marketingIdeas, publishedContent, contentPatterns, analyticsEvents]);
+
+  const restoreMerge = useCallback((data: Record<string, unknown[]>) => {
+    if (data.campaigns) {
+      const incoming = data.campaigns as Campaign[];
+      setCampaigns(prev => {
+        const merged = [...prev];
+        incoming.forEach(ic => {
+          const idx = merged.findIndex(c => c.id === ic.id);
+          if (idx >= 0) merged[idx] = ic;
+          else merged.push(ic);
+        });
+        return merged;
+      });
+    }
+    if (data.approvals) {
+      const incoming = data.approvals as ApprovalItem[];
+      setApprovals(prev => {
+        const merged = [...prev];
+        incoming.forEach(ia => {
+          const idx = merged.findIndex(a => a.id === ia.id);
+          if (idx >= 0) merged[idx] = ia;
+          else merged.push(ia);
+        });
+        return merged;
+      });
+    }
+    if (data.assets) {
+      const incoming = data.assets as Asset[];
+      setAssets(prev => {
+        const merged = [...prev];
+        incoming.forEach(ia => {
+          const idx = merged.findIndex(a => a.id === ia.id);
+          if (idx >= 0) merged[idx] = ia;
+          else merged.push(ia);
+        });
+        return merged;
+      });
+    }
+    if (data.workspacesList) {
+      const incoming = data.workspacesList as Workspace[];
+      setWorkspacesList(prev => {
+        const merged = [...prev];
+        incoming.forEach(iw => {
+          const idx = merged.findIndex(w => w.id === iw.id);
+          if (idx >= 0) merged[idx] = iw;
+          else merged.push(iw);
+        });
+        return merged;
+      });
+    }
+    if (data.tools) {
+      const incoming = data.tools as Tool[];
+      setTools(prev => {
+        const merged = [...prev];
+        incoming.forEach(it => {
+          const idx = merged.findIndex(t => t.id === it.id);
+          if (idx >= 0) merged[idx] = it;
+          else merged.push(it);
+        });
+        return merged;
+      });
+    }
+    if (data.editableKpis) {
+      const incoming = data.editableKpis as EditableKPI[];
+      setEditableKpis(prev => {
+        const merged = [...prev];
+        incoming.forEach(ik => {
+          const idx = merged.findIndex(k => k.id === ik.id);
+          if (idx >= 0) merged[idx] = ik;
+          else merged.push(ik);
+        });
+        return merged;
+      });
+    }
+    if (data.editableAudiences) {
+      const incoming = data.editableAudiences as EditableAudience[];
+      setEditableAudiences(prev => {
+        const merged = [...prev];
+        incoming.forEach(ia => {
+          const idx = merged.findIndex(a => a.id === ia.id);
+          if (idx >= 0) merged[idx] = ia;
+          else merged.push(ia);
+        });
+        return merged;
+      });
+    }
+    if (data.kpiChannelData) {
+      const incoming = data.kpiChannelData as KPIChannelEntry[];
+      setKpiChannelData(prev => {
+        const merged = [...prev];
+        incoming.forEach(ik => {
+          const idx = merged.findIndex(k => k.id === ik.id);
+          if (idx >= 0) merged[idx] = ik;
+          else merged.push(ik);
+        });
+        return merged;
+      });
+    }
+    if (data.kpiTimeSeriesData) {
+      const incoming = data.kpiTimeSeriesData as KPITimeSeriesEntry[];
+      setKpiTimeSeriesData(prev => {
+        const merged = [...prev];
+        incoming.forEach(ik => {
+          const idx = merged.findIndex(k => k.id === ik.id);
+          if (idx >= 0) merged[idx] = ik;
+          else merged.push(ik);
+        });
+        return merged;
+      });
+    }
+    if (data.kpiSentimentData) {
+      const incoming = data.kpiSentimentData as KPISentimentEntry[];
+      setKpiSentimentData(prev => {
+        const merged = [...prev];
+        incoming.forEach(ik => {
+          const idx = merged.findIndex(k => k.id === ik.id);
+          if (idx >= 0) merged[idx] = ik;
+          else merged.push(ik);
+        });
+        return merged;
+      });
+    }
+    if (data.marketingIdeas) {
+      const incoming = data.marketingIdeas as MarketingIdea[];
+      setMarketingIdeas(prev => {
+        const merged = [...prev];
+        incoming.forEach(im => {
+          const idx = merged.findIndex(m => m.id === im.id);
+          if (idx >= 0) merged[idx] = im;
+          else merged.push(im);
+        });
+        return merged;
+      });
+    }
+    if (data.publishedContent) {
+      const incoming = data.publishedContent as PublishedContent[];
+      setPublishedContent(prev => {
+        const merged = [...prev];
+        incoming.forEach(ip => {
+          const idx = merged.findIndex(p => p.id === ip.id);
+          if (idx >= 0) merged[idx] = ip;
+          else merged.push(ip);
+        });
+        return merged;
+      });
+    }
+    if (data.contentPatterns) {
+      const incoming = data.contentPatterns as ContentPattern[];
+      setContentPatterns(prev => {
+        const merged = [...prev];
+        incoming.forEach(ip => {
+          const idx = merged.findIndex(p => p.id === ip.id);
+          if (idx >= 0) merged[idx] = ip;
+          else merged.push(ip);
+        });
+        return merged;
+      });
+    }
+    if (data.analyticsEvents) {
+      const incoming = data.analyticsEvents as AnalyticsEvent[];
+      setAnalyticsEvents(prev => [...prev, ...incoming]);
+    }
+  }, []);
+
+  const restoreFullReplace = useCallback((data: Record<string, unknown[]>) => {
+    if (data.campaigns) setCampaigns(data.campaigns as Campaign[]);
+    if (data.approvals) setApprovals(data.approvals as ApprovalItem[]);
+    if (data.assets) setAssets(data.assets as Asset[]);
+    if (data.workspacesList) setWorkspacesList(data.workspacesList as Workspace[]);
+    if (data.tools) setTools(data.tools as Tool[]);
+    if (data.editableKpis) setEditableKpis(data.editableKpis as EditableKPI[]);
+    if (data.editableAudiences) setEditableAudiences(data.editableAudiences as EditableAudience[]);
+    if (data.kpiChannelData) setKpiChannelData(data.kpiChannelData as KPIChannelEntry[]);
+    if (data.kpiTimeSeriesData) setKpiTimeSeriesData(data.kpiTimeSeriesData as KPITimeSeriesEntry[]);
+    if (data.kpiSentimentData) setKpiSentimentData(data.kpiSentimentData as KPISentimentEntry[]);
+    if (data.marketingIdeas) setMarketingIdeas(data.marketingIdeas as MarketingIdea[]);
+    if (data.publishedContent) setPublishedContent(data.publishedContent as PublishedContent[]);
+    if (data.contentPatterns) setContentPatterns(data.contentPatterns as ContentPattern[]);
+    if (data.analyticsEvents) setAnalyticsEvents(data.analyticsEvents as AnalyticsEvent[]);
+  }, []);
+
   // ==================== SYNC CONTROLS (exposed) ====================
 
   const forcePush = useCallback(() => {
@@ -859,6 +1256,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       kpiChannelData, setKpiChannelData, addKpiChannel, editKpiChannel, deleteKpiChannel,
       kpiTimeSeriesData, setKpiTimeSeriesData, addKpiTimeSeries, editKpiTimeSeries, deleteKpiTimeSeries,
       kpiSentimentData, setKpiSentimentData, addKpiSentiment, editKpiSentiment, deleteKpiSentiment,
+      tools, setTools, addTool, editTool, deleteTool, reorderTools,
+      aiCommandLog, addAiCommand,
+      editableKpis, setEditableKpis, addEditableKpi, updateEditableKpi, archiveEditableKpi, restoreEditableKpi,
+      editableAudiences, setEditableAudiences, addEditableAudience, updateEditableAudience, archiveEditableAudience, restoreEditableAudience,
+      publishedContent, setPublishedContent, addPublishedContent, updatePublishedContent, deletePublishedContent,
+      contentPatterns, setContentPatterns, resetContentPatterns,
+      backupLogs, addBackupLog, getBackupData, restoreMerge, restoreFullReplace,
     }}>
       {children}
     </AppContext.Provider>

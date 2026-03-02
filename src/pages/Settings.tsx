@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useApp } from '../store/AppContext';
 import { workspaces } from '../data/mockData';
 import { Role } from '../types';
@@ -7,10 +7,11 @@ import {
   Shield, Users, Bell, Globe, Lock, Database, Palette,
   ChevronRight, CheckCircle2, FileText, Zap, X, Save, Send,
   UserPlus, AlertTriangle, Eye, EyeOff, Trash2, RotateCcw, Edit3,
-  ExternalLink, Copy, HelpCircle
+  ExternalLink, Copy, HelpCircle, Download, Upload, Play, Clock,
+  Archive, RefreshCw, ShieldCheck
 } from 'lucide-react';
 
-type SettingsTab = 'general' | 'security' | 'integrations' | 'team' | 'compliance';
+type SettingsTab = 'general' | 'security' | 'integrations' | 'team' | 'compliance' | 'backups';
 
 interface IntegrationGuide {
   name: string;
@@ -187,6 +188,348 @@ const integrationGuides: Record<string, IntegrationGuide> = {
   },
 };
 
+function BackupsPanel() {
+  const {
+    campaigns, teamMembers, assets, approvals,
+    editableKpis, editableAudiences, publishedContent, contentPatterns,
+    backupLogs, addBackupLog, currentUser, tools,
+  } = useApp();
+
+  const [restoreMode, setRestoreMode] = useState<'dry-run' | 'merge' | 'full-replace'>('dry-run');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [validationResult, setValidationResult] = useState<{ valid: boolean; message: string; counts?: Record<string, number> } | null>(null);
+  const [restoreConfirmText, setRestoreConfirmText] = useState('');
+  const [restoreCountdown, setRestoreCountdown] = useState(0);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [includePatterns, setIncludePatterns] = useState(true);
+  const [statusMessage, setStatusMessage] = useState('');
+
+  const recordCounts: Record<string, number> = {
+    campaigns: campaigns.length,
+    teamMembers: teamMembers.length,
+    assets: assets.length,
+    approvals: approvals.length,
+    kpis: editableKpis.length,
+    audiences: editableAudiences.length,
+    publishedContent: publishedContent.length,
+    contentPatterns: includePatterns ? contentPatterns.length : 0,
+    tools: tools.length,
+  };
+
+  const totalRecords = Object.values(recordCounts).reduce((a, b) => a + b, 0);
+
+  const generateChecksum = (data: string): string => {
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16).padStart(8, '0') + '-' + data.length.toString(16);
+  };
+
+  const handleGenerateBackup = useCallback(() => {
+    const data: Record<string, unknown> = {
+      campaigns, assets, approvals,
+      kpis: editableKpis, audiences: editableAudiences,
+      publishedContent, tools,
+    };
+    if (includePatterns) {
+      data.contentPatterns = contentPatterns;
+    }
+
+    const dataStr = JSON.stringify(data);
+    const backup = {
+      metadata: {
+        version: '3.6',
+        generatedAt: new Date().toISOString(),
+        appVersion: 'Comms Dashboard v1.0',
+        checksum: generateChecksum(dataStr),
+        recordCounts,
+        includesPatterns: includePatterns,
+      },
+      data,
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `comms-dashboard-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    addBackupLog({
+      id: `bl-${Date.now()}`,
+      type: 'export',
+      status: 'success',
+      recordCounts,
+      performedBy: currentUser?.name || 'Unknown',
+      createdAt: new Date().toISOString(),
+    });
+
+    setStatusMessage('Backup generated and downloaded successfully.');
+    setTimeout(() => setStatusMessage(''), 4000);
+  }, [campaigns, assets, approvals, editableKpis, editableAudiences, publishedContent, contentPatterns, tools, includePatterns, recordCounts, currentUser, addBackupLog, generateChecksum]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      setValidationResult({ valid: false, message: 'File exceeds 25MB limit.' });
+      return;
+    }
+    setUploadedFile(file);
+    setValidationResult(null);
+  };
+
+  const handleValidate = async () => {
+    if (!uploadedFile) return;
+    try {
+      const text = await uploadedFile.text();
+      const parsed = JSON.parse(text);
+
+      if (!parsed.metadata || !parsed.data) {
+        setValidationResult({ valid: false, message: 'Invalid backup file: missing metadata or data keys.' });
+        return;
+      }
+      if (!parsed.metadata.checksum) {
+        setValidationResult({ valid: false, message: 'Invalid backup file: missing checksum.' });
+        return;
+      }
+
+      const dataStr = JSON.stringify(parsed.data);
+      const recalculated = generateChecksum(dataStr);
+      if (recalculated !== parsed.metadata.checksum) {
+        setValidationResult({ valid: false, message: `Checksum mismatch. Expected: ${parsed.metadata.checksum}, Got: ${recalculated}. File may be corrupted.` });
+        return;
+      }
+
+      setValidationResult({
+        valid: true,
+        message: `Valid backup from ${new Date(parsed.metadata.generatedAt).toLocaleString()}. Version: ${parsed.metadata.version}`,
+        counts: parsed.metadata.recordCounts,
+      });
+    } catch {
+      setValidationResult({ valid: false, message: 'Failed to parse file. Ensure it is valid JSON.' });
+    }
+  };
+
+  const handleRestore = () => {
+    if (restoreMode === 'full-replace') {
+      setShowConfirmModal(true);
+      setRestoreConfirmText('');
+      setRestoreCountdown(5);
+      const interval = setInterval(() => {
+        setRestoreCountdown(prev => {
+          if (prev <= 1) { clearInterval(interval); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      executeRestore();
+    }
+  };
+
+  const executeRestore = () => {
+    addBackupLog({
+      id: `bl-${Date.now()}`,
+      type: 'import',
+      mode: restoreMode,
+      status: restoreMode === 'dry-run' ? 'dry-run' : 'success',
+      recordCounts: validationResult?.counts || {},
+      performedBy: currentUser?.name || 'Unknown',
+      createdAt: new Date().toISOString(),
+    });
+
+    setShowConfirmModal(false);
+    setStatusMessage(restoreMode === 'dry-run'
+      ? 'Dry run complete. No data was changed.'
+      : `Restore (${restoreMode}) completed successfully.`);
+    setTimeout(() => setStatusMessage(''), 4000);
+    setUploadedFile(null);
+    setValidationResult(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      {statusMessage && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm text-emerald-400 font-medium animate-fade-in">
+          <CheckCircle2 size={16} />{statusMessage}
+        </div>
+      )}
+
+      {/* Generate Backup */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h3 className="font-semibold mb-1 flex items-center gap-2"><Download size={16} className="text-brand-400" /> Generate Backup</h3>
+        <p className="text-xs text-slate-400 mb-4">Export a complete snapshot of all your data as a JSON file with integrity checksum.</p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
+          {Object.entries(recordCounts).map(([key, count]) => (
+            <div key={key} className="p-3 bg-slate-800/50 rounded-xl text-center">
+              <p className="text-lg font-bold tabular-nums">{count}</p>
+              <p className="text-[10px] text-slate-500 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+            <button onClick={() => setIncludePatterns(!includePatterns)}
+              className={`w-9 h-5 rounded-full relative transition-colors ${includePatterns ? 'bg-brand-600' : 'bg-slate-700'}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${includePatterns ? 'translate-x-4.5 left-0.5' : 'translate-x-0.5'}`} />
+            </button>
+            Include learning patterns
+          </label>
+          <button onClick={handleGenerateBackup}
+            className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-500 rounded-xl text-sm font-semibold transition-colors">
+            <Download size={16} /> Generate & Download ({totalRecords} records)
+          </button>
+        </div>
+      </div>
+
+      {/* Upload & Restore */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h3 className="font-semibold mb-1 flex items-center gap-2"><Upload size={16} className="text-amber-400" /> Upload & Restore</h3>
+        <p className="text-xs text-slate-400 mb-4">Upload a backup file to validate and optionally restore data.</p>
+
+        <div className="space-y-4">
+          {/* File input */}
+          <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:border-slate-600 transition-colors">
+            <input type="file" accept=".json" onChange={handleFileUpload}
+              className="absolute inset-0 opacity-0 cursor-pointer" style={{ position: 'relative' }} />
+            {uploadedFile ? (
+              <div className="flex items-center justify-center gap-2">
+                <Archive size={16} className="text-emerald-400" />
+                <span className="text-sm font-medium">{uploadedFile.name}</span>
+                <span className="text-xs text-slate-500">({(uploadedFile.size / 1024).toFixed(1)} KB)</span>
+                <button onClick={() => { setUploadedFile(null); setValidationResult(null); }} className="text-slate-500 hover:text-red-400 ml-2"><X size={14} /></button>
+              </div>
+            ) : (
+              <div>
+                <Upload size={24} className="text-slate-600 mx-auto mb-2" />
+                <p className="text-sm text-slate-400">Click to select a backup file</p>
+                <p className="text-[10px] text-slate-600 mt-1">JSON files up to 25MB</p>
+              </div>
+            )}
+          </div>
+
+          {/* Restore mode */}
+          <div>
+            <label className="text-xs font-semibold text-slate-400 block mb-2">Restore Mode</label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { id: 'dry-run' as const, label: 'Dry Run', desc: 'Validate only, no changes', icon: <ShieldCheck size={14} /> },
+                { id: 'merge' as const, label: 'Merge', desc: 'Add new, update existing', icon: <RefreshCw size={14} /> },
+                { id: 'full-replace' as const, label: 'Full Replace', desc: 'Delete all, replace from backup', icon: <AlertTriangle size={14} /> },
+              ]).map(mode => (
+                <button key={mode.id} onClick={() => setRestoreMode(mode.id)}
+                  className={`p-3 rounded-xl border text-left transition-all ${restoreMode === mode.id
+                    ? mode.id === 'full-replace' ? 'bg-red-500/10 border-red-500/30 ring-1 ring-red-500/30' : 'bg-brand-600/10 border-brand-500/30 ring-1 ring-brand-500/30'
+                    : 'border-slate-700 hover:border-slate-600'}`}>
+                  <div className="flex items-center gap-2 mb-1">{mode.icon}<span className="text-xs font-semibold">{mode.label}</span></div>
+                  <p className="text-[10px] text-slate-500">{mode.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Validation result */}
+          {validationResult && (
+            <div className={`p-4 rounded-xl border ${validationResult.valid
+              ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
+              <div className="flex items-center gap-2 mb-1">
+                {validationResult.valid ? <CheckCircle2 size={16} className="text-emerald-400" /> : <AlertTriangle size={16} className="text-red-400" />}
+                <span className={`text-sm font-semibold ${validationResult.valid ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {validationResult.valid ? 'Validation Passed' : 'Validation Failed'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">{validationResult.message}</p>
+              {validationResult.counts && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {Object.entries(validationResult.counts).map(([k, v]) => (
+                    <span key={k} className="text-[10px] bg-slate-800 px-2 py-1 rounded-full text-slate-300">
+                      {k}: <span className="font-semibold">{v as number}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center gap-3">
+            <button onClick={handleValidate} disabled={!uploadedFile}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-medium transition-colors border border-slate-700">
+              <ShieldCheck size={16} /> Validate File
+            </button>
+            <button onClick={handleRestore} disabled={!validationResult?.valid}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                restoreMode === 'full-replace' ? 'bg-red-600 hover:bg-red-500' : 'bg-brand-600 hover:bg-brand-500'}`}>
+              <Play size={16} /> {restoreMode === 'dry-run' ? 'Run Simulation' : restoreMode === 'merge' ? 'Execute Merge' : 'Execute Full Replace'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Restore History */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h3 className="font-semibold mb-4 flex items-center gap-2"><Clock size={16} className="text-slate-400" /> Restore History</h3>
+        {backupLogs.length === 0 ? (
+          <p className="text-sm text-slate-500 text-center py-6">No backup or restore operations yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {backupLogs.slice().reverse().map(log => (
+              <div key={log.id} className="flex items-center gap-3 p-3 bg-slate-800/40 rounded-xl">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${log.type === 'export' ? 'bg-brand-500/20 text-brand-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                  {log.type === 'export' ? <Download size={14} /> : <Upload size={14} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold">{log.type}{log.mode ? ` (${log.mode})` : ''}</p>
+                  <p className="text-[10px] text-slate-500">{new Date(log.createdAt).toLocaleString()} · by {log.performedBy}</p>
+                </div>
+                <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${
+                  log.status === 'success' ? 'bg-emerald-500/10 text-emerald-400' :
+                  log.status === 'dry-run' ? 'bg-blue-500/10 text-blue-400' :
+                  'bg-red-500/10 text-red-400'}`}>{log.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Full Replace Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowConfirmModal(false)} />
+          <div className="relative bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-md shadow-2xl animate-scale-in p-6">
+            <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={28} className="text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold text-center mb-2">Full Replace Warning</h3>
+            <p className="text-sm text-slate-400 text-center mb-4">This will <span className="text-red-400 font-semibold">delete all existing data</span> and replace it with the backup file contents. This cannot be undone.</p>
+            <div className="mb-4">
+              <label className="text-xs text-slate-400 mb-1.5 block font-medium">Type <span className="text-white font-mono">RESTORE CONFIRM</span> to proceed:</label>
+              <input type="text" value={restoreConfirmText} onChange={e => setRestoreConfirmText(e.target.value)}
+                className="w-full bg-slate-800 border border-red-500/30 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                placeholder="RESTORE CONFIRM" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowConfirmModal(false)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
+              <button onClick={executeRestore}
+                disabled={restoreConfirmText !== 'RESTORE CONFIRM' || restoreCountdown > 0}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors text-white">
+                {restoreCountdown > 0 ? `Wait ${restoreCountdown}s...` : 'Confirm Full Replace'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Settings() {
   const {
     workspaceSettings, setWorkspaceSettings,
@@ -225,6 +568,7 @@ export default function Settings() {
     { id: 'integrations', label: 'Integrations', icon: <Globe size={16} /> },
     { id: 'team', label: 'Team & Users', icon: <Users size={16} /> },
     { id: 'compliance', label: 'Compliance', icon: <FileText size={16} /> },
+    { id: 'backups', label: 'Backups', icon: <Database size={16} /> },
   ];
 
   const showSaved = (msg?: string) => {
@@ -474,6 +818,23 @@ export default function Settings() {
                 <h3 className="font-semibold mb-4">Data Handling</h3>
                 <div className="space-y-3 text-sm">{[{ label: 'Data residency', value: 'UK (London region)' },{ label: 'Encryption at rest', value: 'AES-256' },{ label: 'Encryption in transit', value: 'TLS 1.3' },{ label: 'Backup frequency', value: 'Every 4 hours' },{ label: 'Data retention', value: '7 years (configurable)' }].map((item, i) => (<div key={i} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-xl"><span className="text-slate-400">{item.label}</span><span className="font-medium">{item.value}</span></div>))}</div>
               </div>
+            </div>
+          )}
+
+          {/* Backups Tab */}
+          {activeTab === 'backups' && (
+            <div className="space-y-6 animate-fade-in">
+              {!permissions.canEditSettings ? (
+                <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+                  <Lock size={18} className="text-red-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-300">Access Denied</p>
+                    <p className="text-xs text-red-400/70 mt-0.5">Only administrators can access backup and restore functionality.</p>
+                  </div>
+                </div>
+              ) : (
+                <BackupsPanel />
+              )}
             </div>
           )}
         </div>
