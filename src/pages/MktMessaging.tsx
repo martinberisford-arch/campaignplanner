@@ -22,7 +22,7 @@ const AUDIENCE_SEGMENTS = [
 // ─── URL Extraction Engine (client-side simulation with real metadata parsing) ─
 
 async function extractFromUrl(url: string, domainMappings: DomainMapping[]): Promise<{ data: ExtractedPageData; missing: string[]; method: string }> {
-  // Validate URL
+  // Validate URL client-side first
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(url);
@@ -36,56 +36,37 @@ async function extractFromUrl(url: string, domainMappings: DomainMapping[]): Pro
     throw new Error('Internal URLs are not allowed for security reasons.');
   }
 
-  // Check domain priority mapping
+  // Check domain priority mapping for custom field map
   const domainMatch = domainMappings.find(dm => hostname.includes(dm.domain));
+  const fieldMap = domainMatch?.fieldMap || {};
 
-  // Simulate extraction with realistic mock based on URL patterns
-  // In production this would be a serverless function using fetch + HTML parsing
-  await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
+  // Call the real server-side scraping API — runs on Vercel, no CORS issues
+  const response = await fetch('/api/scrape', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, fieldMap }),
+  });
 
-  const path = parsedUrl.pathname.toLowerCase();
-  const isEvent = path.includes('event') || path.includes('workshop') || path.includes('seminar') || path.includes('conference');
-  const isNews = path.includes('news') || path.includes('blog') || path.includes('article') || path.includes('post');
-  const isJob = path.includes('job') || path.includes('career') || path.includes('vacancy') || path.includes('recruit');
-
-  // Build realistic extracted data based on URL patterns
-  const extracted: ExtractedPageData = { url };
-
-  if (isEvent) {
-    extracted.title = 'NHS Staff Wellbeing & Resilience Workshop';
-    extracted.description = 'A practical half-day workshop for NHS staff covering stress management, resilience building, and accessing mental health support services. Facilitated by qualified wellbeing coaches.';
-    extracted.startDate = '14 March 2025';
-    extracted.endDate = '14 March 2025';
-    extracted.time = '9:30 AM – 1:00 PM';
-    extracted.location = domainMatch?.fieldMap?.location ? 'NHS England, Leeds Offices' : 'NHS England, London';
-    extracted.siteName = 'NHS England';
-  } else if (isNews) {
-    extracted.title = 'NHS Launches New Digital Health Strategy 2025–2030';
-    extracted.description = 'NHS England has published its comprehensive digital health transformation strategy, outlining key priorities for patient-facing technology, staff digital tools, and data-driven care delivery over the next five years.';
-    extracted.siteName = 'NHS England';
-    extracted.author = 'NHS England Communications';
-  } else if (isJob) {
-    extracted.title = 'Primary Care Coach — NHS England';
-    extracted.description = 'We are recruiting experienced Primary Care Coaches to support GP practices across the region. This role offers flexible working, excellent benefits, and the opportunity to shape care delivery at scale.';
-    extracted.location = 'Flexible / Hybrid';
-    extracted.siteName = 'NHS Jobs';
-    extracted.price = 'Band 7 – £43,742 to £50,056 per annum';
-  } else {
-    extracted.title = `Content from ${hostname}`;
-    extracted.description = 'Key information extracted from the page. Please review and edit before generating your message.';
-    extracted.siteName = hostname.replace('www.', '').replace('.nhs.uk', ' NHS').replace('.gov.uk', ' Gov').replace('.co.uk', '');
+  if (!response.ok) {
+    let errorMsg = `Scraping failed (${response.status})`;
+    try {
+      const errBody = await response.json() as { error?: string };
+      if (errBody.error) errorMsg = errBody.error;
+    } catch { /* ignore */ }
+    throw new Error(errorMsg);
   }
 
-  // Apply domain-specific field mapping if available
+  const result = await response.json() as {
+    data: ExtractedPageData;
+    missing: string[];
+    method: string;
+  };
+
   if (domainMatch) {
-    // In production: use domainMatch.fieldMap to pull custom meta tags
-    extracted._domainPriority = domainMatch.domain;
+    result.data._domainPriority = domainMatch.domain;
   }
 
-  const method = domainMatch ? `Domain priority mapping (${domainMatch.domain})` : 'OpenGraph → Meta tags → HTML parsing';
-  const missing = Object.entries(extracted).filter(([, v]) => !v && !['url', '_domainPriority'].includes('')).map(([k]) => k);
-
-  return { data: extracted, missing: missing.slice(0, 3), method };
+  return { data: result.data, missing: result.missing, method: result.method };
 }
 
 // ─── Template Engine: render message from template + data ────────────────────
