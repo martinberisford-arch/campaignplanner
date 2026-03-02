@@ -405,11 +405,54 @@ export interface ContentBrief {
 export interface MessageTemplate {
   id: string;
   name: string;
+  description?: string;
   type: 'sms' | 'whatsapp';
   baseStructure: string;
   charLimit: number;
   placeholders: string[];
+  isActive: boolean;
+  domainPriority?: string;
+  variableSchema: Record<string, { label: string; required: boolean; hint?: string }>;
   createdAt: string;
+  updatedAt: string;
+  usageCount: number;
+}
+
+export interface DomainMapping {
+  id: string;
+  domain: string;
+  fieldMap: Record<string, string>;
+  createdAt: string;
+}
+
+export interface ExtractedPageData {
+  title?: string;
+  description?: string;
+  price?: string;
+  startDate?: string;
+  endDate?: string;
+  location?: string;
+  time?: string;
+  image?: string;
+  url: string;
+  siteName?: string;
+  author?: string;
+  [key: string]: string | undefined;
+}
+
+export interface MessageLog {
+  id: string;
+  templateId: string;
+  templateName: string;
+  url: string;
+  extractedData: Record<string, string>;
+  finalMessage: string;
+  charCount: number;
+  platform: 'sms' | 'whatsapp';
+  audience: string;
+  predictedEngagement: number;
+  createdAt: string;
+  createdBy: string;
 }
 
 export interface GeneratedMessage {

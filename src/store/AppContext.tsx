@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace, MarketingIdea, AnalyticsEvent, KPIChannelEntry, KPITimeSeriesEntry, KPISentimentEntry, Tool, EditableKPI, EditableAudience, PublishedContent, ContentPattern, BackupLog } from '../types';
+import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace, MarketingIdea, AnalyticsEvent, KPIChannelEntry, KPITimeSeriesEntry, KPISentimentEntry, Tool, EditableKPI, EditableAudience, PublishedContent, ContentPattern, BackupLog, MessageTemplate, DomainMapping, MessageLog } from '../types';
 import { updateOrCreatePattern } from '../utils/adaptiveEngine';
 import { campaigns as initialCampaigns, approvalItems as initialApprovals, assets as initialAssets, workspaces as initialWorkspaces } from '../data/mockData';
 import { MARKETING_IDEAS } from '../data/marketingIdeas';
@@ -207,6 +207,19 @@ interface AppState {
   getBackupData: (includeLearning: boolean) => Record<string, unknown[]>;
   restoreMerge: (data: Record<string, unknown[]>) => void;
   restoreFullReplace: (data: Record<string, unknown[]>) => void;
+
+  // Messaging Engine
+  messageTemplates: MessageTemplate[];
+  addMessageTemplate: (t: MessageTemplate) => void;
+  updateMessageTemplate: (id: string, updates: Partial<MessageTemplate>) => void;
+  deleteMessageTemplate: (id: string) => void;
+  duplicateMessageTemplate: (id: string) => void;
+  domainMappings: DomainMapping[];
+  addDomainMapping: (m: DomainMapping) => void;
+  updateDomainMapping: (id: string, updates: Partial<DomainMapping>) => void;
+  deleteDomainMapping: (id: string) => void;
+  messageLogs: MessageLog[];
+  addMessageLog: (log: MessageLog) => void;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -291,6 +304,83 @@ const defaultTools: Tool[] = [
   { id: 't12', title: 'NHS England Hub', description: 'Access the NHS England intranet for brand guidelines, policies and central communications.', icon: 'ExternalLink', externalUrl: 'https://www.england.nhs.uk', isExternal: true, isEnabled: true, displayOrder: 11, category: 'external', badge: 'External', badgeColor: 'blue', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
   { id: 't13', title: 'GCS Resources', description: 'Government Communication Service frameworks, templates and campaign planning toolkits.', icon: 'ExternalLink', externalUrl: 'https://gcs.civilservice.gov.uk', isExternal: true, isEnabled: true, displayOrder: 12, category: 'external', badge: 'External', badgeColor: 'blue', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
   { id: 't14', title: 'Canva', description: 'Design social media graphics, presentations and campaign visuals with your brand kit.', icon: 'Palette', externalUrl: 'https://www.canva.com', isExternal: true, isEnabled: true, displayOrder: 13, category: 'external', badge: 'External', badgeColor: 'teal', createdAt: '2025-01-01', updatedAt: '2025-01-01' },
+];
+
+const defaultMessageTemplates: MessageTemplate[] = [
+  {
+    id: 'mt1', name: 'Event Announcement', description: 'Announce an upcoming event with key details', type: 'whatsapp',
+    baseStructure: '*{{title}}*\n\n📍 {{location}}\n📅 {{startDate}} at {{time}}\n\n{{description}}\n\nBook your place 👇\n{{url}}',
+    charLimit: 500, isActive: true, domainPriority: '',
+    placeholders: ['title', 'location', 'startDate', 'time', 'description', 'url'],
+    variableSchema: {
+      title: { label: 'Event Title', required: true, hint: 'The name of the event' },
+      location: { label: 'Location', required: true, hint: 'Physical address or "Online"' },
+      startDate: { label: 'Date', required: true, hint: 'e.g. 15 March 2025' },
+      time: { label: 'Time', required: true, hint: 'e.g. 2:00 PM' },
+      description: { label: 'Description', required: false, hint: 'Brief description of the event' },
+      url: { label: 'Registration URL', required: true, hint: 'Full URL for booking' },
+    },
+    usageCount: 0, createdAt: '2025-01-01', updatedAt: '2025-01-01',
+  },
+  {
+    id: 'mt2', name: 'Staff Reminder', description: 'Quick reminder for internal staff', type: 'whatsapp',
+    baseStructure: '📢 *Reminder: {{title}}*\n\n{{description}}\n\n⏰ Due: {{startDate}}\n\n{{url}}',
+    charLimit: 500, isActive: true, domainPriority: '',
+    placeholders: ['title', 'description', 'startDate', 'url'],
+    variableSchema: {
+      title: { label: 'Reminder Title', required: true },
+      description: { label: 'Details', required: true },
+      startDate: { label: 'Due Date / Date', required: true },
+      url: { label: 'Link (optional)', required: false },
+    },
+    usageCount: 0, createdAt: '2025-01-01', updatedAt: '2025-01-01',
+  },
+  {
+    id: 'mt3', name: 'SMS Event Alert', description: 'Short SMS for event reminders', type: 'sms',
+    baseStructure: '{{siteName}}: {{title}} - {{startDate}}. Info: {{url}}',
+    charLimit: 160, isActive: true, domainPriority: '',
+    placeholders: ['siteName', 'title', 'startDate', 'url'],
+    variableSchema: {
+      siteName: { label: 'Organisation Name', required: true },
+      title: { label: 'Event / Update Title', required: true },
+      startDate: { label: 'Date', required: true },
+      url: { label: 'Short URL', required: true },
+    },
+    usageCount: 0, createdAt: '2025-01-01', updatedAt: '2025-01-01',
+  },
+  {
+    id: 'mt4', name: 'Campaign CTA', description: 'Drive action for a campaign', type: 'whatsapp',
+    baseStructure: '🎯 *{{title}}*\n\n{{description}}\n\n✅ {{cta}}:\n{{url}}',
+    charLimit: 500, isActive: true, domainPriority: '',
+    placeholders: ['title', 'description', 'cta', 'url'],
+    variableSchema: {
+      title: { label: 'Campaign Title', required: true },
+      description: { label: 'Benefit / Value', required: true },
+      cta: { label: 'Call to Action', required: true, hint: 'e.g. "Sign up now"' },
+      url: { label: 'Landing Page URL', required: true },
+    },
+    usageCount: 0, createdAt: '2025-01-01', updatedAt: '2025-01-01',
+  },
+  {
+    id: 'mt5', name: 'News Update', description: 'Share organisation news or updates', type: 'whatsapp',
+    baseStructure: '📰 *{{title}}*\n\n{{description}}\n\n👉 Read more: {{url}}',
+    charLimit: 500, isActive: true, domainPriority: '',
+    placeholders: ['title', 'description', 'url'],
+    variableSchema: {
+      title: { label: 'News Headline', required: true },
+      description: { label: 'Summary', required: true },
+      url: { label: 'Article URL', required: true },
+    },
+    usageCount: 0, createdAt: '2025-01-01', updatedAt: '2025-01-01',
+  },
+];
+
+const defaultDomainMappings: DomainMapping[] = [
+  {
+    id: 'dm1', domain: 'england.nhs.uk',
+    fieldMap: { title: 'og:title', description: 'og:description', startDate: 'event:start_date', location: 'event:location', price: 'event:price' },
+    createdAt: '2025-01-01',
+  },
 ];
 
 const defaultEditableKpis: EditableKPI[] = [
@@ -444,6 +534,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [publishedContent, setPublishedContent] = useState<PublishedContent[]>([]);
   const [contentPatterns, setContentPatterns] = useState<ContentPattern[]>([]);
   const [backupLogs, setBackupLogs] = useState<BackupLog[]>([]);
+  const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>(defaultMessageTemplates);
+  const [domainMappings, setDomainMappings] = useState<DomainMapping[]>(defaultDomainMappings);
+  const [messageLogs, setMessageLogs] = useState<MessageLog[]>([]);
 
   // --- Sync state ---
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -987,6 +1080,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setContentPatterns([]);
   }, []);
 
+  // ==================== MESSAGING ENGINE CRUD ====================
+
+  const addMessageTemplate = useCallback((t: MessageTemplate) => {
+    setMessageTemplates(prev => [...prev, t]);
+  }, []);
+
+  const updateMessageTemplate = useCallback((id: string, updates: Partial<MessageTemplate>) => {
+    setMessageTemplates(prev => prev.map(t => t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t));
+  }, []);
+
+  const deleteMessageTemplate = useCallback((id: string) => {
+    setMessageTemplates(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const duplicateMessageTemplate = useCallback((id: string) => {
+    setMessageTemplates(prev => {
+      const original = prev.find(t => t.id === id);
+      if (!original) return prev;
+      const copy: MessageTemplate = {
+        ...original,
+        id: `mt-${Date.now()}`,
+        name: `${original.name} (Copy)`,
+        usageCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return [...prev, copy];
+    });
+  }, []);
+
+  const addDomainMapping = useCallback((m: DomainMapping) => {
+    setDomainMappings(prev => [...prev, m]);
+  }, []);
+
+  const updateDomainMapping = useCallback((id: string, updates: Partial<DomainMapping>) => {
+    setDomainMappings(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+  }, []);
+
+  const deleteDomainMapping = useCallback((id: string) => {
+    setDomainMappings(prev => prev.filter(m => m.id !== id));
+  }, []);
+
+  const addMessageLog = useCallback((log: MessageLog) => {
+    setMessageLogs(prev => [log, ...prev]);
+    // Increment template usage count
+    setMessageTemplates(prev => prev.map(t => t.id === log.templateId ? { ...t, usageCount: t.usageCount + 1, updatedAt: new Date().toISOString() } : t));
+  }, []);
+
   // ==================== BACKUP & RESTORE ====================
 
   const addBackupLog = useCallback((log: BackupLog) => {
@@ -1263,6 +1404,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       publishedContent, setPublishedContent, addPublishedContent, updatePublishedContent, deletePublishedContent,
       contentPatterns, setContentPatterns, resetContentPatterns,
       backupLogs, addBackupLog, getBackupData, restoreMerge, restoreFullReplace,
+      messageTemplates, addMessageTemplate, updateMessageTemplate, deleteMessageTemplate, duplicateMessageTemplate,
+      domainMappings, addDomainMapping, updateDomainMapping, deleteDomainMapping,
+      messageLogs, addMessageLog,
     }}>
       {children}
     </AppContext.Provider>
