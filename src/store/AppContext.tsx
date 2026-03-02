@@ -433,6 +433,9 @@ interface SharedState {
   publishedContent?: PublishedContent[];
   contentPatterns?: ContentPattern[];
   backupLogs?: BackupLog[];
+  messageTemplates?: MessageTemplate[];
+  domainMappings?: DomainMapping[];
+  messageLogs?: MessageLog[];
 }
 
 // ==================== PROVIDER ====================
@@ -587,6 +590,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     publishedContent,
     contentPatterns,
     backupLogs,
+    messageTemplates,
+    domainMappings,
+    messageLogs,
   };
 
   const permissions = currentUser ? getPermissions(currentUser.role) : viewerPermissions;
@@ -622,6 +628,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (state.publishedContent) setPublishedContent(state.publishedContent);
     if (state.contentPatterns) setContentPatterns(state.contentPatterns);
     if (state.backupLogs) setBackupLogs(state.backupLogs);
+    if (state.messageTemplates) setMessageTemplates(state.messageTemplates);
+    if (state.domainMappings) setDomainMappings(state.domainMappings);
+    if (state.messageLogs) setMessageLogs(state.messageLogs);
   }, []);
 
   const pushToServer = useCallback(async () => {
@@ -718,7 +727,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     schedulePush();
-  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, tools, editableKpis, editableAudiences, publishedContent, contentPatterns, backupLogs, schedulePush]);
+  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, tools, editableKpis, editableAudiences, publishedContent, contentPatterns, backupLogs, messageTemplates, domainMappings, messageLogs, schedulePush]);
 
   // --- Poll for remote changes ---
   useEffect(() => {
