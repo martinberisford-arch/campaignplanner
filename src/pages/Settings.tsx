@@ -537,7 +537,7 @@ export default function Settings() {
     integrations, setIntegrations,
     teamMembers,
     permissions, currentUser,
-    createUser, updateUser, deactivateUser, reactivateUser,
+    createUser, updateUser, deleteTeamMember, deactivateUser, reactivateUser,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -557,6 +557,9 @@ export default function Settings() {
   const [showNewPass, setShowNewPass] = useState(false);
   const [createError, setCreateError] = useState('');
   const [createSuccess, setCreateSuccess] = useState(false);
+
+  // Delete confirm state
+  const [deleteConfirmMember, setDeleteConfirmMember] = useState<{ id: string; name: string } | null>(null);
 
   // Edit user form
   const [editRole, setEditRole] = useState<Role>('contributor');
@@ -792,8 +795,13 @@ export default function Settings() {
                       <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize ${roleColorClass(member.role)}`}>{member.role}</span>
                       {permissions.canManageUsers && member.id !== currentUser?.id && (
                         <div className="flex items-center gap-1">
-                          <button onClick={() => openEditUser(member.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition-colors"><Edit3 size={14} /></button>
-                          {member.active ? (<button onClick={() => { deactivateUser(member.id); showSaved(`${member.name} deactivated`); }} className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={14} /></button>) : (<button onClick={() => { reactivateUser(member.id); showSaved(`${member.name} reactivated`); }} className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"><RotateCcw size={14} /></button>)}
+                          <button onClick={() => openEditUser(member.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition-colors" title="Edit user"><Edit3 size={14} /></button>
+                          {member.active ? (
+                            <button onClick={() => { deactivateUser(member.id); showSaved(`${member.name} deactivated`); }} className="p-1.5 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors" title="Deactivate (keeps account)"><EyeOff size={14} /></button>
+                          ) : (
+                            <button onClick={() => { reactivateUser(member.id); showSaved(`${member.name} reactivated`); }} className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors" title="Reactivate"><RotateCcw size={14} /></button>
+                          )}
+                          <button onClick={() => setDeleteConfirmMember({ id: member.id, name: member.name })} className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Permanently delete user"><Trash2 size={14} /></button>
                         </div>
                       )}
                     </div>
@@ -979,6 +987,48 @@ export default function Settings() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {deleteConfirmMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteConfirmMember(null)} />
+          <div className="relative bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-md shadow-2xl animate-fade-in">
+            <div className="p-6">
+              <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={26} className="text-red-400" />
+              </div>
+              <h2 className="text-lg font-bold text-center mb-2">Delete User Permanently</h2>
+              <p className="text-sm text-slate-400 text-center mb-1">
+                Are you sure you want to permanently delete
+              </p>
+              <p className="text-base font-semibold text-white text-center mb-4">
+                {deleteConfirmMember.name}?
+              </p>
+              <p className="text-xs text-red-400/80 text-center mb-6 bg-red-500/10 rounded-xl px-4 py-3 border border-red-500/20">
+                ⚠ This action cannot be undone. The user will be completely removed and will no longer be able to log in.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmMember(null)}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    deleteTeamMember(deleteConfirmMember.id);
+                    showSaved(`${deleteConfirmMember.name} permanently deleted`);
+                    setDeleteConfirmMember(null);
+                  }}
+                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl text-sm font-semibold transition-colors text-white"
+                >
+                  Delete Permanently
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -107,6 +107,7 @@ interface AppState {
   // User management
   createUser: (user: Omit<TeamMember, 'id' | 'createdAt' | 'active'> & { password: string }) => { success: boolean; error?: string };
   updateUser: (id: string, updates: Partial<TeamMember>) => void;
+  deleteTeamMember: (id: string) => void;
   deactivateUser: (id: string) => void;
   reactivateUser: (id: string) => void;
 
@@ -922,6 +923,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTeamMembersRaw(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
   }, []);
 
+  const deleteTeamMember = useCallback((id: string) => {
+    setTeamMembersRaw(prev => {
+      const updated = prev.filter(u => u.id !== id);
+      // Push immediately to Redis without waiting for debounce
+      // so the next poll sees the deletion rather than restoring the user
+      setTimeout(() => {
+        const state = sharedStateRef.current;
+        state.teamMembers = updated;
+        fetch('/api/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state }),
+        }).catch(() => {/* noop */});
+      }, 0);
+      return updated;
+    });
+  }, []);
+
   const deactivateUser = useCallback((id: string) => {
     setTeamMembersRaw(prev => prev.map(u => u.id === id ? { ...u, active: false } : u));
   }, []);
@@ -1394,7 +1413,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notificationSettings, setNotificationSettings,
       integrations, setIntegrations,
       teamMembers, setTeamMembers,
-      createUser, updateUser, deactivateUser, reactivateUser,
+      createUser, updateUser, deleteTeamMember, deactivateUser, reactivateUser,
       manualKpiData, setManualKpiData,
       workspacesList, setWorkspacesList, activeWorkspaceId, setActiveWorkspaceId,
       addWorkspace, editWorkspace, deleteWorkspace,
