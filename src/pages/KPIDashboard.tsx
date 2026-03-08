@@ -193,6 +193,53 @@ export default function KPIDashboard() {
     }
   };
 
+
+  const renderSecondaryTab = () => {
+    if (activeTab === 'channels') {
+      return (
+        <ChannelSection
+          data={kpiChannelData}
+          canEdit={canEdit}
+          onAdd={addKpiChannel}
+          onEdit={editKpiChannel}
+          onDelete={deleteKpiChannel}
+          sourceLabel={SOURCE_BADGES}
+          currentUser={currentUser?.name || 'Unknown'}
+        />
+      );
+    }
+
+    if (activeTab === 'timeseries') {
+      return (
+        <TimeSeriesSection
+          data={kpiTimeSeriesData}
+          canEdit={canEdit}
+          onAdd={addKpiTimeSeries}
+          onEdit={editKpiTimeSeries}
+          onDelete={deleteKpiTimeSeries}
+          sourceLabel={SOURCE_BADGES}
+          currentUser={currentUser?.name || 'Unknown'}
+        />
+      );
+    }
+
+    if (activeTab === 'sentiment') {
+      return (
+        <SentimentSection
+          data={kpiSentimentData}
+          canEdit={canEdit}
+          onAdd={addKpiSentiment}
+          onEdit={editKpiSentiment}
+          onDelete={deleteKpiSentiment}
+          sourceLabel={SOURCE_BADGES}
+          currentUser={currentUser?.name || 'Unknown'}
+        />
+      );
+    }
+
+    return null;
+  };
+
   const exportKpis = (type: 'csv' | 'json') => {
     const rows = kpiRecords.map(r => {
       const kpi = kpiMap.get(r.kpiId);
@@ -428,43 +475,14 @@ export default function KPIDashboard() {
                 </tbody>
               </table>
             </div>
-          )}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {activeTab === 'channels' && (
-        <ChannelSection
-          data={kpiChannelData}
-          canEdit={canEdit}
-          onAdd={addKpiChannel}
-          onEdit={editKpiChannel}
-          onDelete={deleteKpiChannel}
-          sourceLabel={SOURCE_BADGES}
-          currentUser={currentUser?.name || 'Unknown'}
-        />
-      )}
-      {activeTab === 'timeseries' && (
-        <TimeSeriesSection
-          data={kpiTimeSeriesData}
-          canEdit={canEdit}
-          onAdd={addKpiTimeSeries}
-          onEdit={editKpiTimeSeries}
-          onDelete={deleteKpiTimeSeries}
-          sourceLabel={SOURCE_BADGES}
-          currentUser={currentUser?.name || 'Unknown'}
-        />
-      )}
-      {activeTab === 'sentiment' && (
-        <SentimentSection
-          data={kpiSentimentData}
-          canEdit={canEdit}
-          onAdd={addKpiSentiment}
-          onEdit={editKpiSentiment}
-          onDelete={deleteKpiSentiment}
-          sourceLabel={SOURCE_BADGES}
-          currentUser={currentUser?.name || 'Unknown'}
-        />
-      )}
+      {renderSecondaryTab()}
     </div>
   );
 }
