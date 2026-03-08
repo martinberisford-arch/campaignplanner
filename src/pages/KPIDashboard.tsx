@@ -424,7 +424,7 @@ function ChannelSection({ title, data, onAdd, onEdit, onDelete, canEdit, kind }:
           <textarea value={jsonValue} onChange={e => setJsonValue(e.target.value)} rows={10} className="w-full p-3 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono" placeholder="Paste JSON payload" />
           <button disabled={!canEdit} onClick={save} className="mt-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm disabled:opacity-50">Save</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
