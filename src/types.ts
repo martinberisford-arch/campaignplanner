@@ -301,6 +301,20 @@ export interface KPISentimentEntry {
   addedBy: string;
 }
 
+export interface KPIRecordEntry {
+  id: string;
+  kpiId: string;
+  periodLabel: string;
+  value: number;
+  target?: number;
+  unit: string;
+  notes?: string;
+  source: KPIDataSource;
+  sourceLabel: string;
+  addedAt: string;
+  addedBy: string;
+}
+
 // ===== TOOL REGISTRY =====
 
 export interface Tool {
