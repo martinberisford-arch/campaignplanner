@@ -478,6 +478,9 @@ export default function KPIDashboard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
       {renderSecondaryTab()}
     </div>
