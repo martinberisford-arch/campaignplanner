@@ -135,6 +135,50 @@ export default function KPIDashboard() {
     openRecordEditor();
   };
 
+
+  const secondaryTabContent = (() => {
+    switch (activeTab) {
+      case 'channels':
+        return (
+          <ChannelSection
+            data={kpiChannelData}
+            canEdit={canEdit}
+            onAdd={addKpiChannel}
+            onEdit={editKpiChannel}
+            onDelete={deleteKpiChannel}
+            sourceLabel={SOURCE_BADGES}
+            currentUser={currentUser?.name || 'Unknown'}
+          />
+        );
+      case 'timeseries':
+        return (
+          <TimeSeriesSection
+            data={kpiTimeSeriesData}
+            canEdit={canEdit}
+            onAdd={addKpiTimeSeries}
+            onEdit={editKpiTimeSeries}
+            onDelete={deleteKpiTimeSeries}
+            sourceLabel={SOURCE_BADGES}
+            currentUser={currentUser?.name || 'Unknown'}
+          />
+        );
+      case 'sentiment':
+        return (
+          <SentimentSection
+            data={kpiSentimentData}
+            canEdit={canEdit}
+            onAdd={addKpiSentiment}
+            onEdit={editKpiSentiment}
+            onDelete={deleteKpiSentiment}
+            sourceLabel={SOURCE_BADGES}
+            currentUser={currentUser?.name || 'Unknown'}
+          />
+        );
+      default:
+        return null;
+    }
+  })();
+
   const exportKpis = (type: 'csv' | 'json') => {
     const rows = kpiRecords.map(r => {
       const kpi = editableKpis.find(k => k.id === r.kpiId);
@@ -340,9 +384,7 @@ export default function KPIDashboard() {
   );
 }
 
-      {activeTab === 'channels' && <ChannelSection data={kpiChannelData} canEdit={canEdit} onAdd={addKpiChannel} onEdit={editKpiChannel} onDelete={deleteKpiChannel} sourceLabel={SOURCE_BADGES} currentUser={currentUser?.name || 'Unknown'} />}
-      {activeTab === 'timeseries' && <TimeSeriesSection data={kpiTimeSeriesData} canEdit={canEdit} onAdd={addKpiTimeSeries} onEdit={editKpiTimeSeries} onDelete={deleteKpiTimeSeries} sourceLabel={SOURCE_BADGES} currentUser={currentUser?.name || 'Unknown'} />}
-      {activeTab === 'sentiment' && <SentimentSection data={kpiSentimentData} canEdit={canEdit} onAdd={addKpiSentiment} onEdit={editKpiSentiment} onDelete={deleteKpiSentiment} sourceLabel={SOURCE_BADGES} currentUser={currentUser?.name || 'Unknown'} />}
+      {secondaryTabContent}
     </div>
   );
 }
