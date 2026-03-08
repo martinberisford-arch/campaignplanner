@@ -428,7 +428,7 @@ export default function KPIDashboard() {
                 </tbody>
               </table>
             </div>
-          </div>
+          )}
         </div>
       )}
 
