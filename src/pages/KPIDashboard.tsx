@@ -23,6 +23,12 @@ const CATEGORY_LABELS = {
 
 type ActiveTab = 'overview' | 'records' | 'channels' | 'timeseries' | 'sentiment';
 
+
+function toSource(value: string): KPIDataSource {
+  if (value in SOURCE_BADGES) return value as KPIDataSource;
+  return 'manual';
+}
+
 export default function KPIDashboard() {
   const {
     permissions,
@@ -242,7 +248,7 @@ export default function KPIDashboard() {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <input value={recordForm.unit} onChange={e => setRecordForm(prev => ({ ...prev, unit: e.target.value }))} placeholder="Unit" className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
-          <select value={recordForm.source} onChange={e => setRecordForm(prev => ({ ...prev, source: e.target.value as KPIDataSource }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
+          <select value={recordForm.source} onChange={e => setRecordForm(prev => ({ ...prev, source: toSource(e.target.value) }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
             {Object.entries(SOURCE_BADGES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         </div>
@@ -415,47 +421,8 @@ function ChannelSection({ title, data, onAdd, onEdit, onDelete, canEdit, kind }:
 
       {showForm && (
         <div className="mt-4">
-          <textarea value={jsonValue} onChange={e => setJsonValue(e.target.value)} rows={10} className="w-full p-3 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono" placeholder='{"field":"value"}' />
+          <textarea value={jsonValue} onChange={e => setJsonValue(e.target.value)} rows={10} className="w-full p-3 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono" placeholder="Paste JSON payload" />
           <button disabled={!canEdit} onClick={save} className="mt-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm disabled:opacity-50">Save</button>
-        </div>
-        <select value={form.source} onChange={e => setForm(prev => ({ ...prev, source: e.target.value as KPIDataSource }))} className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
-          {Object.entries(sourceLabel).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-        </select>
-        <div className="flex gap-2">
-          <button disabled={!canEdit} onClick={save} className="flex-1 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm disabled:opacity-50">{editingId ? 'Update' : 'Add'}</button>
-          {editingId && <button onClick={() => startEdit()} className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">Cancel</button>}
-        </div>
-      </div>
-
-      <div className="xl:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <ResponsiveContainer width="100%" height={230}>
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis dataKey="date" stroke="#94a3b8" />
-            <YAxis stroke="#94a3b8" />
-            <Tooltip />
-            <Bar dataKey="positive" fill="#10b981" />
-            <Bar dataKey="neutral" fill="#94a3b8" />
-            <Bar dataKey="negative" fill="#ef4444" />
-          </BarChart>
-        </ResponsiveContainer>
-        <div className="overflow-auto mt-4">
-          <table className="w-full text-sm">
-            <thead className="text-slate-400">
-              <tr className="border-b border-slate-800"><th className="text-left p-2">Date</th><th className="text-left p-2">Positive</th><th className="text-left p-2">Neutral</th><th className="text-left p-2">Negative</th><th className="text-right p-2">Actions</th></tr>
-            </thead>
-            <tbody>
-              {data.map(row => (
-                <tr key={row.id} className="border-b border-slate-800/70">
-                  <td className="p-2">{row.date}</td><td className="p-2">{row.positive}</td><td className="p-2">{row.neutral}</td><td className="p-2">{row.negative}</td>
-                  <td className="p-2 text-right">
-                    <button disabled={!canEdit} onClick={() => startEdit(row)} className="p-2 text-slate-400 hover:text-white disabled:opacity-50"><Pencil size={14} /></button>
-                    <button disabled={!canEdit} onClick={() => onDelete(row.id)} className="p-2 text-slate-400 hover:text-red-400 disabled:opacity-50"><Trash2 size={14} /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
