@@ -240,6 +240,8 @@ export default function KPIDashboard() {
     return null;
   };
 
+  const secondaryTabContent = renderSecondaryTab();
+
   const exportKpis = (type: 'csv' | 'json') => {
     const rows = kpiRecords.map(r => {
       const kpi = kpiMap.get(r.kpiId);
@@ -482,12 +484,14 @@ export default function KPIDashboard() {
   );
 }
 
-      {renderSecondaryTab()}
+      {secondaryTabContent}
     </div>
   );
 }
 
-function SummaryTile({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+type SummaryTileProps = { icon: ReactNode; label: string; value: string };
+
+function SummaryTile({ icon, label, value }: SummaryTileProps) {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
       <p className="text-[11px] text-slate-500 flex items-center gap-1">{icon}{label}</p>
@@ -496,7 +500,9 @@ function SummaryTile({ icon, label, value }: { icon: ReactNode; label: string; v
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+type StatCardProps = { label: string; value: string };
+
+function StatCard({ label, value }: StatCardProps) {
   return (
     <div className="rounded-lg bg-slate-800/60 border border-slate-700 p-3">
       <p className="text-xs text-slate-400">{label}</p>
