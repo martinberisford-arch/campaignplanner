@@ -336,6 +336,9 @@ export default function KPIDashboard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
       {activeTab === 'channels' && <ChannelSection data={kpiChannelData} canEdit={canEdit} onAdd={addKpiChannel} onEdit={editKpiChannel} onDelete={deleteKpiChannel} sourceLabel={SOURCE_BADGES} currentUser={currentUser?.name || 'Unknown'} />}
       {activeTab === 'timeseries' && <TimeSeriesSection data={kpiTimeSeriesData} canEdit={canEdit} onAdd={addKpiTimeSeries} onEdit={editKpiTimeSeries} onDelete={deleteKpiTimeSeries} sourceLabel={SOURCE_BADGES} currentUser={currentUser?.name || 'Unknown'} />}
