@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useApp } from '../store/AppContext';
 import { getCategoryLabel, getCategoryColor, CATEGORY_LIST } from '../data/marketingIdeas';
-import { TrendingUp, TrendingDown, Target, BarChart3, Lightbulb, Zap, Award, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, BarChart3, Lightbulb, Zap, Award, ArrowUpRight, ArrowDownRight, Minus, FileText } from 'lucide-react';
 
 const MOCK_KPI_TRENDS = [
   { name: 'Engagement Rate', current: 4.2, target: 5.0, previous: 3.8, unit: '%' },
@@ -15,7 +15,7 @@ const MOCK_KPI_TRENDS = [
 ];
 
 export default function MktPerformance() {
-  const { marketingIdeas, campaigns, theme } = useApp();
+  const { marketingIdeas, campaigns, publishedContent, theme, setView } = useApp();
 
   const isDark = theme === 'dark';
   const cardBg = isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200';
@@ -65,6 +65,44 @@ export default function MktPerformance() {
     });
   }, [campaigns]);
 
+  const contentReporting = useMemo(() => {
+    const withEngagement = publishedContent.filter(c => typeof c.engagementScore === 'number');
+    const withConversion = publishedContent.filter(c => typeof c.conversionRate === 'number');
+    const avgEngagement = withEngagement.length
+      ? withEngagement.reduce((sum, c) => sum + (c.engagementScore || 0), 0) / withEngagement.length
+      : 0;
+    const avgConversion = withConversion.length
+      ? withConversion.reduce((sum, c) => sum + (c.conversionRate || 0), 0) / withConversion.length
+      : 0;
+
+    const monthlyMap = new Map<string, { label: string; engagement: number[]; conversion: number[] }>();
+    publishedContent.forEach(item => {
+      const monthKey = item.publishDate.slice(0, 7);
+      if (!monthlyMap.has(monthKey)) {
+        monthlyMap.set(monthKey, { label: monthKey, engagement: [], conversion: [] });
+      }
+      const bucket = monthlyMap.get(monthKey)!;
+      if (typeof item.engagementScore === 'number') bucket.engagement.push(item.engagementScore);
+      if (typeof item.conversionRate === 'number') bucket.conversion.push(item.conversionRate);
+    });
+
+    const monthlyTrend = Array.from(monthlyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([, data]) => ({
+        label: data.label,
+        engagement: data.engagement.length ? data.engagement.reduce((sum, value) => sum + value, 0) / data.engagement.length : 0,
+        conversion: data.conversion.length ? data.conversion.reduce((sum, value) => sum + value, 0) / data.conversion.length : 0,
+      }));
+
+    return {
+      total: publishedContent.length,
+      avgEngagement,
+      avgConversion,
+      monthlyTrend,
+    };
+  }, [publishedContent]);
+
   return (
     <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-6">
       <div>
@@ -89,6 +127,61 @@ export default function MktPerformance() {
             <p className={`text-[10px] ${textMuted} mt-0.5`}>{s.sub}</p>
           </div>
         ))}
+      </div>
+
+      <div className={`rounded-xl border p-6 ${cardBg}`}>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div>
+            <h2 className={`text-lg font-semibold ${textMain}`}>Content Log Reporting</h2>
+            <p className={`text-xs ${textMuted}`}>Content log metrics are rolled into reporting so communications performance is visible in one place.</p>
+          </div>
+          <button
+            onClick={() => setView('content-log')}
+            className="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2"
+          >
+            <FileText size={14} /> Open Content Log
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className={`rounded-lg p-4 ${subCardBg}`}>
+            <p className={`text-[10px] font-semibold ${textMuted}`}>Logged content items</p>
+            <p className={`text-2xl font-bold ${textMain}`}>{contentReporting.total}</p>
+          </div>
+          <div className={`rounded-lg p-4 ${subCardBg}`}>
+            <p className={`text-[10px] font-semibold ${textMuted}`}>Avg engagement</p>
+            <p className={`text-2xl font-bold text-emerald-400`}>{contentReporting.avgEngagement.toFixed(1)}%</p>
+          </div>
+          <div className={`rounded-lg p-4 ${subCardBg}`}>
+            <p className={`text-[10px] font-semibold ${textMuted}`}>Avg conversion</p>
+            <p className={`text-2xl font-bold text-blue-400`}>{contentReporting.avgConversion.toFixed(1)}%</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {contentReporting.monthlyTrend.length === 0 ? (
+            <p className={`text-xs ${textMuted}`}>No monthly trend data yet. Add entries in Content Log with engagement/conversion values.</p>
+          ) : (
+            contentReporting.monthlyTrend.map(point => (
+              <div key={point.label} className="grid grid-cols-[90px_1fr_1fr] items-center gap-3">
+                <span className={`text-[11px] font-medium ${textMuted}`}>{point.label}</span>
+                <div className={`h-2 rounded-full ${isDark ? 'bg-slate-800' : 'bg-gray-200'}`}>
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.max(2, Math.min(point.engagement, 100))}%` }} />
+                </div>
+                <div className={`h-2 rounded-full ${isDark ? 'bg-slate-800' : 'bg-gray-200'}`}>
+                  <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.max(2, Math.min(point.conversion, 100))}%` }} />
+                </div>
+              </div>
+            ))
+          )}
+          {contentReporting.monthlyTrend.length > 0 && (
+            <div className={`grid grid-cols-[90px_1fr_1fr] text-[10px] ${textMuted}`}>
+              <span />
+              <span>Engagement trend</span>
+              <span>Conversion trend</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* KPI Trends vs Target */}
