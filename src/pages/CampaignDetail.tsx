@@ -60,7 +60,7 @@ export default function CampaignDetail() {
   // Task management state
   const [showAddTask, setShowAddTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [taskForm, setTaskForm] = useState({ title: '', description: '', priority: 'medium' as Priority, dueDate: '', status: 'todo' as Task['status'] });
+  const [taskForm, setTaskForm] = useState({ title: '', description: '', priority: 'medium' as Priority, dueDate: '', status: 'todo' as Task['status'], assigneeId: '' });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // Governance state
@@ -73,6 +73,8 @@ export default function CampaignDetail() {
   const [newChecklistItem, setNewChecklistItem] = useState({ title: '', description: '', category: '', mandatory: false, approvalRequired: false });
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [budgetForm, setBudgetForm] = useState({ budget: '', spent: '' });
 
   if (!campaign) {
     return (
@@ -86,8 +88,15 @@ export default function CampaignDetail() {
   const completedTasks = campaign.tasks.filter(t => t.status === 'done').length;
   const totalTasks = campaign.tasks.length;
   const progressPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  const budgetPct = Math.round((campaign.spent / campaign.budget) * 100);
+  const budgetPct = campaign.budget > 0 ? Math.min(100, Math.round((campaign.spent / campaign.budget) * 100)) : 0;
   const daysRemaining = Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / 86400000));
+  const goalStatus = campaign.goalStatus || {};
+  const completedGoals = campaign.goals.filter(goal => goalStatus[goal]).length;
+
+  const resolveAssignee = (assigneeId: string) => {
+    if (!assigneeId) return undefined;
+    return campaign.team.find(member => member.id === assigneeId) || (currentUser?.id === assigneeId ? currentUser : undefined);
+  };
 
   // Governance calculations
   const governance = calculateGovernanceScore(campaign);
@@ -117,10 +126,10 @@ export default function CampaignDetail() {
       dueDate: taskForm.dueDate || campaign.endDate,
       campaignId: campaign.id,
       tags: [],
-      assignee: currentUser ? { id: currentUser.id, name: currentUser.name, email: currentUser.email, role: currentUser.role, avatar: currentUser.avatar, department: currentUser.department } : undefined,
+      assignee: resolveAssignee(taskForm.assigneeId),
     };
     addTask(campaign.id, newTask);
-    setTaskForm({ title: '', description: '', priority: 'medium', dueDate: '', status: 'todo' });
+    setTaskForm({ title: '', description: '', priority: 'medium', dueDate: '', status: 'todo', assigneeId: '' });
     setShowAddTask(false);
     addNotification({ title: 'Task Added', message: `"${newTask.title}" added to ${campaign.title}`, type: 'task', icon: '✅' });
   };
@@ -133,19 +142,39 @@ export default function CampaignDetail() {
       priority: taskForm.priority,
       dueDate: taskForm.dueDate,
       status: taskForm.status,
+      assignee: resolveAssignee(taskForm.assigneeId),
     });
     setEditingTaskId(null);
-    setTaskForm({ title: '', description: '', priority: 'medium', dueDate: '', status: 'todo' });
+    setTaskForm({ title: '', description: '', priority: 'medium', dueDate: '', status: 'todo', assigneeId: '' });
   };
 
   const startEdit = (task: Task) => {
     setEditingTaskId(task.id);
-    setTaskForm({ title: task.title, description: task.description, priority: task.priority, dueDate: task.dueDate, status: task.status });
+    setTaskForm({ title: task.title, description: task.description, priority: task.priority, dueDate: task.dueDate, status: task.status, assigneeId: task.assignee?.id || '' });
   };
 
   const handleDeleteTask = (taskId: string) => {
     deleteTask(campaign.id, taskId);
     setDeleteConfirm(null);
+  };
+
+  const handleSaveBudget = () => {
+    const parsedBudget = Number(budgetForm.budget);
+    const parsedSpent = Number(budgetForm.spent);
+    if (!Number.isFinite(parsedBudget) || parsedBudget < 0) return;
+    if (!Number.isFinite(parsedSpent) || parsedSpent < 0) return;
+
+    updateCampaign(campaign.id, { budget: parsedBudget, spent: parsedSpent });
+    setIsEditingBudget(false);
+  };
+
+  const handleToggleGoal = (goal: string) => {
+    updateCampaign(campaign.id, {
+      goalStatus: {
+        ...goalStatus,
+        [goal]: !goalStatus[goal],
+      },
+    });
   };
 
   // Governance handlers
@@ -315,12 +344,48 @@ export default function CampaignDetail() {
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-3"><DollarSign size={16} className="text-emerald-400" /><span className="text-xs text-slate-500">Budget</span></div>
-          <p className="text-xl font-bold">£{(campaign.budget / 1000).toFixed(0)}k</p>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2"><DollarSign size={16} className="text-emerald-400" /><span className="text-xs text-slate-500">Budget</span></div>
+            {permissions.canEditCampaign && (
+              <button
+                onClick={() => {
+                  setIsEditingBudget(true);
+                  setBudgetForm({ budget: String(campaign.budget), spent: String(campaign.spent) });
+                }}
+                className="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          <p className="text-xl font-bold">£{campaign.budget.toLocaleString()}</p>
           <div className="mt-2">
-            <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>£{(campaign.spent / 1000).toFixed(1)}k spent</span><span>{budgetPct}%</span></div>
+            <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>£{campaign.spent.toLocaleString()} spent</span><span>{budgetPct}%</span></div>
             <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden"><div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${budgetPct}%` }} /></div>
           </div>
+
+          {isEditingBudget && permissions.canEditCampaign && (
+            <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                min={0}
+                value={budgetForm.budget}
+                onChange={e => setBudgetForm(prev => ({ ...prev, budget: e.target.value }))}
+                placeholder="Budget"
+                className="bg-slate-800 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-white"
+              />
+              <input
+                type="number"
+                min={0}
+                value={budgetForm.spent}
+                onChange={e => setBudgetForm(prev => ({ ...prev, spent: e.target.value }))}
+                placeholder="Spent"
+                className="bg-slate-800 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-white"
+              />
+              <button onClick={handleSaveBudget} className="px-3 py-2 bg-brand-600 hover:bg-brand-500 rounded-lg text-xs font-semibold">Save</button>
+              <button onClick={() => setIsEditingBudget(false)} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs">Cancel</button>
+            </div>
+          )}
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3"><Target size={16} className="text-brand-400" /><span className="text-xs text-slate-500">Task Progress</span></div>
@@ -347,14 +412,20 @@ export default function CampaignDetail() {
         <div className={`${hasChecklist && showGovernancePanel ? 'lg:col-span-2' : 'lg:col-span-2'} space-y-6`}>
           {/* Goals */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h3 className="font-semibold mb-4 flex items-center gap-2"><Target size={16} className="text-brand-400" /> Campaign Goals</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold flex items-center gap-2"><Target size={16} className="text-brand-400" /> Campaign Goals</h3>
+              <span className="text-xs text-slate-500">{completedGoals}/{campaign.goals.length} complete</span>
+            </div>
             <div className="space-y-2">
-              {campaign.goals.map((goal, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-slate-800/40 rounded-xl">
-                  <CheckCircle2 size={16} className="text-slate-600 flex-shrink-0" />
-                  <span className="text-sm text-slate-300">{goal}</span>
-                </div>
-              ))}
+              {campaign.goals.map((goal, i) => {
+                const isComplete = !!goalStatus[goal];
+                return (
+                  <button key={i} onClick={() => handleToggleGoal(goal)} className="w-full flex items-center gap-3 p-3 bg-slate-800/40 rounded-xl hover:bg-slate-800/70 text-left transition-colors">
+                    <CheckCircle2 size={16} className={`${isComplete ? 'text-emerald-400' : 'text-slate-600'} flex-shrink-0`} />
+                    <span className={`text-sm ${isComplete ? 'text-slate-400 line-through' : 'text-slate-300'}`}>{goal}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -373,7 +444,7 @@ export default function CampaignDetail() {
                 </div>
               </div>
               {(permissions.canCreateCampaign) && (
-                <button onClick={() => { setShowAddTask(true); setEditingTaskId(null); setTaskForm({ title: '', description: '', priority: 'medium', dueDate: '', status: 'todo' }); }}
+                <button onClick={() => { setShowAddTask(true); setEditingTaskId(null); setTaskForm({ title: '', description: '', priority: 'medium', dueDate: '', status: 'todo', assigneeId: '' }); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-500 rounded-lg text-xs font-semibold transition-colors">
                   <Plus size={14} /> Add Task
                 </button>
@@ -389,7 +460,7 @@ export default function CampaignDetail() {
                     placeholder="Task title *" className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50" />
                   <textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))}
                     placeholder="Description (optional)" rows={2} className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 resize-none" />
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
                       <label className="text-[10px] text-slate-500 mb-1 block">Priority</label>
                       <select value={taskForm.priority} onChange={e => setTaskForm(f => ({ ...f, priority: e.target.value as Priority }))}
@@ -408,6 +479,16 @@ export default function CampaignDetail() {
                       <label className="text-[10px] text-slate-500 mb-1 block">Due Date</label>
                       <input type="date" value={taskForm.dueDate} onChange={e => setTaskForm(f => ({ ...f, dueDate: e.target.value }))}
                         className="w-full bg-slate-800 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-white focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500 mb-1 block">Assignee</label>
+                      <select value={taskForm.assigneeId} onChange={e => setTaskForm(f => ({ ...f, assigneeId: e.target.value }))}
+                        className="w-full bg-slate-800 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
+                        <option value="">Unassigned</option>
+                        {campaign.team.map(member => (
+                          <option key={member.id} value={member.id}>{member.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -447,10 +528,12 @@ export default function CampaignDetail() {
                     </div>
                     {task.description && <p className="text-xs text-slate-500 mt-0.5">{task.description}</p>}
                   </div>
-                  {task.assignee && (
+                  {task.assignee ? (
                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-400 to-violet-500 flex items-center justify-center text-[9px] font-bold flex-shrink-0" title={task.assignee.name}>
                       {task.assignee.avatar}
                     </div>
+                  ) : (
+                    <span className="text-[10px] text-slate-500">Unassigned</span>
                   )}
                   <span className="text-[10px] text-slate-500 flex items-center gap-1 flex-shrink-0"><Clock size={10} /> {task.dueDate}</span>
                   {/* Edit/Delete buttons */}

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace, MarketingIdea, AnalyticsEvent, KPIChannelEntry, KPITimeSeriesEntry, KPISentimentEntry, Tool, EditableKPI, EditableAudience, PublishedContent, ContentPattern, BackupLog, MessageTemplate, DomainMapping, MessageLog } from '../types';
+import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace, MarketingIdea, AnalyticsEvent, KPIChannelEntry, KPITimeSeriesEntry, KPISentimentEntry, KPIRecordEntry, Tool, EditableKPI, EditableAudience, PublishedContent, ContentPattern, BackupLog, MessageTemplate, DomainMapping, MessageLog, CalendarEventItem } from '../types';
 import { updateOrCreatePattern } from '../utils/adaptiveEngine';
 import { campaigns as initialCampaigns, approvalItems as initialApprovals, assets as initialAssets, workspaces as initialWorkspaces } from '../data/mockData';
 import { MARKETING_IDEAS } from '../data/marketingIdeas';
@@ -131,6 +131,11 @@ interface AppState {
   addKpiSentiment: (entry: KPISentimentEntry) => void;
   editKpiSentiment: (id: string, updates: Partial<KPISentimentEntry>) => void;
   deleteKpiSentiment: (id: string) => void;
+  kpiRecordData: KPIRecordEntry[];
+  setKpiRecordData: React.Dispatch<React.SetStateAction<KPIRecordEntry[]>>;
+  addKpiRecord: (entry: KPIRecordEntry) => void;
+  editKpiRecord: (id: string, updates: Partial<KPIRecordEntry>) => void;
+  deleteKpiRecord: (id: string) => void;
 
   // Workspaces
   workspacesList: Workspace[];
@@ -140,6 +145,12 @@ interface AppState {
   addWorkspace: (ws: Workspace) => void;
   editWorkspace: (id: string, updates: Partial<Workspace>) => void;
   deleteWorkspace: (id: string) => void;
+
+  // Calendar Events
+  calendarEvents: CalendarEventItem[];
+  addCalendarEvent: (event: CalendarEventItem) => void;
+  updateCalendarEvent: (id: string, updates: Partial<CalendarEventItem>) => void;
+  deleteCalendarEvent: (id: string) => void;
 
   // Asset CRUD
   addAsset: (asset: Asset) => void;
@@ -428,6 +439,7 @@ interface SharedState {
   kpiChannelData?: KPIChannelEntry[];
   kpiTimeSeriesData?: KPITimeSeriesEntry[];
   kpiSentimentData?: KPISentimentEntry[];
+  kpiRecordData?: KPIRecordEntry[];
   tools?: Tool[];
   editableKpis?: EditableKPI[];
   editableAudiences?: EditableAudience[];
@@ -437,6 +449,7 @@ interface SharedState {
   messageTemplates?: MessageTemplate[];
   domainMappings?: DomainMapping[];
   messageLogs?: MessageLog[];
+  calendarEvents?: CalendarEventItem[];
 }
 
 // ==================== PROVIDER ====================
@@ -525,8 +538,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     { id: 'ks6', date: 'Feb 10', positive: 80, neutral: 15, negative: 5, source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
   ]);
 
+  const [kpiRecordData, setKpiRecordData] = useState<KPIRecordEntry[]>([
+    { id: 'kr1', kpiId: 'ek1', periodLabel: 'Jan', value: 128000, target: 120000, unit: 'visitors', source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kr2', kpiId: 'ek1', periodLabel: 'Feb', value: 133500, target: 125000, unit: 'visitors', source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-02-01T00:00:00', addedBy: 'System' },
+    { id: 'kr3', kpiId: 'ek3', periodLabel: 'Jan', value: 29.4, target: 27, unit: '%', source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kr4', kpiId: 'ek3', periodLabel: 'Feb', value: 31.2, target: 30, unit: '%', source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-02-01T00:00:00', addedBy: 'System' },
+    { id: 'kr5', kpiId: 'ek5', periodLabel: 'Jan', value: 460, target: 500, unit: 'leads', source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-01-01T00:00:00', addedBy: 'System' },
+    { id: 'kr6', kpiId: 'ek5', periodLabel: 'Feb', value: 512, target: 520, unit: 'leads', source: 'seed', sourceLabel: 'Demo seed data', addedAt: '2025-02-01T00:00:00', addedBy: 'System' },
+  ]);
+
   const [workspacesList, setWorkspacesList] = useState<Workspace[]>(initialWorkspaces);
   const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState<string | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
   const [marketingIdeas, setMarketingIdeas] = useState<MarketingIdea[]>(MARKETING_IDEAS);
   const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([]);
   const [tools, setTools] = useState<Tool[]>(defaultTools);
@@ -551,6 +574,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLocalModeRef = useRef(false);
   const isMountedRef = useRef(true);
+  const immediatePushRef = useRef(false);
 
   // Keep a ref to the latest shared state so we can read it in async callbacks
   const sharedStateRef = useRef<SharedState>({
@@ -585,6 +609,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     kpiChannelData,
     kpiTimeSeriesData,
     kpiSentimentData,
+    kpiRecordData,
     tools,
     editableKpis,
     editableAudiences,
@@ -594,6 +619,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     messageTemplates,
     domainMappings,
     messageLogs,
+    calendarEvents,
   };
 
   const permissions = currentUser ? getPermissions(currentUser.role) : viewerPermissions;
@@ -618,11 +644,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (state.manualKpiData !== undefined) setManualKpiData(state.manualKpiData);
     if (state.workspacesList) setWorkspacesList(state.workspacesList);
     if (state.activeWorkspaceId !== undefined) setActiveWorkspaceIdRaw(state.activeWorkspaceId);
+    if (state.calendarEvents) setCalendarEvents(state.calendarEvents);
     if (state.marketingIdeas) setMarketingIdeas(state.marketingIdeas);
     if (state.analyticsEvents) setAnalyticsEvents(state.analyticsEvents);
     if (state.kpiChannelData) setKpiChannelData(state.kpiChannelData);
     if (state.kpiTimeSeriesData) setKpiTimeSeriesData(state.kpiTimeSeriesData);
     if (state.kpiSentimentData) setKpiSentimentData(state.kpiSentimentData);
+    if (state.kpiRecordData) setKpiRecordData(state.kpiRecordData);
     if (state.tools) setTools(state.tools);
     if (state.editableKpis) setEditableKpis(state.editableKpis);
     if (state.editableAudiences) setEditableAudiences(state.editableAudiences);
@@ -727,8 +755,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       skipNextPushRef.current = false;
       return;
     }
+
+    if (immediatePushRef.current) {
+      immediatePushRef.current = false;
+      pushToServer();
+      return;
+    }
+
     schedulePush();
-  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, tools, editableKpis, editableAudiences, publishedContent, contentPatterns, backupLogs, messageTemplates, domainMappings, messageLogs, schedulePush]);
+  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, kpiRecordData, tools, editableKpis, editableAudiences, publishedContent, contentPatterns, backupLogs, messageTemplates, domainMappings, messageLogs, calendarEvents, schedulePush, pushToServer]);
 
   // --- Poll for remote changes ---
   useEffect(() => {
@@ -763,6 +798,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(poll, SYNC_POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [applyRemoteState]);
+
+  useEffect(() => {
+    const flushPending = () => {
+      if (!hasInitializedRef.current || isLocalModeRef.current) return;
+      pushToServer();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flushPending();
+    };
+
+    window.addEventListener('beforeunload', flushPending);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', flushPending);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [pushToServer]);
 
   // ==================== AUTH ====================
 
@@ -818,6 +872,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ==================== CAMPAIGN CRUD ====================
 
   const addCampaign = useCallback((campaign: Campaign) => {
+    immediatePushRef.current = true;
     setCampaigns(prev => [campaign, ...prev]);
   }, []);
 
@@ -968,6 +1023,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActiveWorkspaceIdRaw(prev => prev === id ? null : prev);
   }, []);
 
+  const addCalendarEvent = useCallback((event: CalendarEventItem) => {
+    setCalendarEvents(prev => [event, ...prev]);
+  }, []);
+
+  const updateCalendarEvent = useCallback((id: string, updates: Partial<CalendarEventItem>) => {
+    setCalendarEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  }, []);
+
+  const deleteCalendarEvent = useCallback((id: string) => {
+    setCalendarEvents(prev => prev.filter(e => e.id !== id));
+  }, []);
+
   // ==================== ASSET CRUD ====================
 
   const addAsset = useCallback((asset: Asset) => {
@@ -1010,6 +1077,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const deleteKpiSentiment = useCallback((id: string) => {
     setKpiSentimentData(prev => prev.filter(e => e.id !== id));
+  }, []);
+  const addKpiRecord = useCallback((entry: KPIRecordEntry) => {
+    setKpiRecordData(prev => [...prev, entry]);
+  }, []);
+  const editKpiRecord = useCallback((id: string, updates: Partial<KPIRecordEntry>) => {
+    setKpiRecordData(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  }, []);
+  const deleteKpiRecord = useCallback((id: string) => {
+    setKpiRecordData(prev => prev.filter(e => e.id !== id));
   }, []);
 
   // ==================== MARKETING IDEAS ====================
@@ -1168,12 +1244,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       approvals,
       assets,
       workspacesList,
+      calendarEvents,
       tools,
       editableKpis,
       editableAudiences,
       kpiChannelData,
       kpiTimeSeriesData,
       kpiSentimentData,
+    kpiRecordData,
       marketingIdeas,
       publishedContent,
     };
@@ -1182,7 +1260,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       data.analyticsEvents = analyticsEvents;
     }
     return data;
-  }, [campaigns, approvals, assets, workspacesList, tools, editableKpis, editableAudiences, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, marketingIdeas, publishedContent, contentPatterns, analyticsEvents]);
+  }, [campaigns, approvals, assets, workspacesList, calendarEvents, tools, editableKpis, editableAudiences, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, kpiRecordData, marketingIdeas, publishedContent, contentPatterns, analyticsEvents]);
 
   const restoreMerge = useCallback((data: Record<string, unknown[]>) => {
     if (data.campaigns) {
@@ -1229,6 +1307,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const idx = merged.findIndex(w => w.id === iw.id);
           if (idx >= 0) merged[idx] = iw;
           else merged.push(iw);
+        });
+        return merged;
+      });
+    }
+    if (data.calendarEvents) {
+      const incoming = data.calendarEvents as CalendarEventItem[];
+      setCalendarEvents(prev => {
+        const merged = [...prev];
+        incoming.forEach(ev => {
+          const idx = merged.findIndex(e => e.id === ev.id);
+          if (idx >= 0) merged[idx] = ev;
+          else merged.push(ev);
         });
         return merged;
       });
@@ -1305,6 +1395,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return merged;
       });
     }
+    if (data.kpiRecordData) {
+      const incoming = data.kpiRecordData as KPIRecordEntry[];
+      setKpiRecordData(prev => {
+        const merged = [...prev];
+        incoming.forEach(ik => {
+          const idx = merged.findIndex(k => k.id === ik.id);
+          if (idx >= 0) merged[idx] = ik;
+          else merged.push(ik);
+        });
+        return merged;
+      });
+    }
     if (data.marketingIdeas) {
       const incoming = data.marketingIdeas as MarketingIdea[];
       setMarketingIdeas(prev => {
@@ -1352,12 +1454,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (data.approvals) setApprovals(data.approvals as ApprovalItem[]);
     if (data.assets) setAssets(data.assets as Asset[]);
     if (data.workspacesList) setWorkspacesList(data.workspacesList as Workspace[]);
+    if (data.calendarEvents) setCalendarEvents(data.calendarEvents as CalendarEventItem[]);
     if (data.tools) setTools(data.tools as Tool[]);
     if (data.editableKpis) setEditableKpis(data.editableKpis as EditableKPI[]);
     if (data.editableAudiences) setEditableAudiences(data.editableAudiences as EditableAudience[]);
     if (data.kpiChannelData) setKpiChannelData(data.kpiChannelData as KPIChannelEntry[]);
     if (data.kpiTimeSeriesData) setKpiTimeSeriesData(data.kpiTimeSeriesData as KPITimeSeriesEntry[]);
     if (data.kpiSentimentData) setKpiSentimentData(data.kpiSentimentData as KPISentimentEntry[]);
+    if (data.kpiRecordData) setKpiRecordData(data.kpiRecordData as KPIRecordEntry[]);
     if (data.marketingIdeas) setMarketingIdeas(data.marketingIdeas as MarketingIdea[]);
     if (data.publishedContent) setPublishedContent(data.publishedContent as PublishedContent[]);
     if (data.contentPatterns) setContentPatterns(data.contentPatterns as ContentPattern[]);
@@ -1417,6 +1521,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       manualKpiData, setManualKpiData,
       workspacesList, setWorkspacesList, activeWorkspaceId, setActiveWorkspaceId,
       addWorkspace, editWorkspace, deleteWorkspace,
+      calendarEvents, addCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
       addAsset, editAsset, deleteAsset,
       syncStatus, lastSyncedAt, forcePush, forceRefresh, resetRemoteState,
       theme, toggleTheme,
@@ -1425,6 +1530,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       kpiChannelData, setKpiChannelData, addKpiChannel, editKpiChannel, deleteKpiChannel,
       kpiTimeSeriesData, setKpiTimeSeriesData, addKpiTimeSeries, editKpiTimeSeries, deleteKpiTimeSeries,
       kpiSentimentData, setKpiSentimentData, addKpiSentiment, editKpiSentiment, deleteKpiSentiment,
+      kpiRecordData, setKpiRecordData, addKpiRecord, editKpiRecord, deleteKpiRecord,
       tools, setTools, addTool, editTool, deleteTool, reorderTools,
       aiCommandLog, addAiCommand,
       editableKpis, setEditableKpis, addEditableKpi, updateEditableKpi, archiveEditableKpi, restoreEditableKpi,

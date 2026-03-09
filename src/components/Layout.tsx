@@ -137,7 +137,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const handleNotificationClick = (notif: AppNotification) => {
     markNotificationRead(notif.id);
     if (notif.campaignId) setSelectedCampaignId(notif.campaignId);
-    if (notif.link) setView(notif.link);
+
+    const fallbackByType: Partial<Record<AppNotification['type'], ViewType>> = {
+      campaign: notif.campaignId ? 'campaign-detail' : 'campaigns',
+      approval: 'approvals',
+      task: notif.campaignId ? 'campaign-detail' : 'campaigns',
+      governance: notif.campaignId ? 'campaign-detail' : 'campaigns',
+      ai: 'kpi',
+      system: 'dashboard',
+    };
+
+    setView(notif.link || fallbackByType[notif.type] || 'dashboard');
     setShowNotifications(false);
   };
 
