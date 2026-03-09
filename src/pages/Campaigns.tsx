@@ -32,7 +32,7 @@ const priorityColors: Record<string, string> = {
 const CAMPAIGN_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444', '#84cc16'];
 
 export default function Campaigns() {
-  const { campaigns, setView, setSelectedCampaignId, updateTaskStatus, addCampaign, deleteCampaign, permissions } = useApp();
+  const { campaigns, setView, setSelectedCampaignId, updateTaskStatus, addCampaign, deleteCampaign, addNotification, permissions } = useApp();
   const [boardView, setBoardView] = useState<BoardView>('kanban');
   const [selectedCampaign, setSelectedCampaign] = useState(campaigns[0]?.id || '');
   const [filterStatus, setFilterStatus] = useState<CampaignStatus | 'all'>('all');
@@ -113,6 +113,14 @@ export default function Campaigns() {
       color: CAMPAIGN_COLORS[Math.floor(Math.random() * CAMPAIGN_COLORS.length)],
     };
     addCampaign(newCampaign);
+    addNotification({
+      title: 'New campaign added',
+      message: `${newCampaign.title} has been created successfully.`,
+      type: 'campaign',
+      link: 'campaign-detail',
+      campaignId: newCampaign.id,
+      icon: '🚀',
+    });
     setShowNewCampaign(false);
     setNewTitle(''); setNewDesc(''); setNewPriority('medium'); setNewStatus('draft');
     setNewStartDate(''); setNewEndDate(''); setNewBudget('');
@@ -444,9 +452,9 @@ export default function Campaigns() {
 
       {/* New Campaign Modal */}
       {showNewCampaign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-16 md:pt-20">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowNewCampaign(false)} />
-          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in">
+          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-6rem)] overflow-y-auto shadow-2xl animate-fade-in">
             <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-6 flex items-center justify-between z-10">
               <div>
                 <h2 className="text-xl font-bold">Create New Campaign</h2>

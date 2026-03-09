@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace, MarketingIdea, AnalyticsEvent, KPIChannelEntry, KPITimeSeriesEntry, KPISentimentEntry, KPIRecordEntry, Tool, EditableKPI, EditableAudience, PublishedContent, ContentPattern, BackupLog, MessageTemplate, DomainMapping, MessageLog } from '../types';
+import { ViewType, Campaign, Task, ApprovalItem, ApprovalStatus, Asset, Role, AppNotification, ChecklistItem, Workspace, MarketingIdea, AnalyticsEvent, KPIChannelEntry, KPITimeSeriesEntry, KPISentimentEntry, KPIRecordEntry, Tool, EditableKPI, EditableAudience, PublishedContent, ContentPattern, BackupLog, MessageTemplate, DomainMapping, MessageLog, CalendarEventItem } from '../types';
 import { updateOrCreatePattern } from '../utils/adaptiveEngine';
 import { campaigns as initialCampaigns, approvalItems as initialApprovals, assets as initialAssets, workspaces as initialWorkspaces } from '../data/mockData';
 import { MARKETING_IDEAS } from '../data/marketingIdeas';
@@ -145,6 +145,12 @@ interface AppState {
   addWorkspace: (ws: Workspace) => void;
   editWorkspace: (id: string, updates: Partial<Workspace>) => void;
   deleteWorkspace: (id: string) => void;
+
+  // Calendar Events
+  calendarEvents: CalendarEventItem[];
+  addCalendarEvent: (event: CalendarEventItem) => void;
+  updateCalendarEvent: (id: string, updates: Partial<CalendarEventItem>) => void;
+  deleteCalendarEvent: (id: string) => void;
 
   // Asset CRUD
   addAsset: (asset: Asset) => void;
@@ -443,6 +449,7 @@ interface SharedState {
   messageTemplates?: MessageTemplate[];
   domainMappings?: DomainMapping[];
   messageLogs?: MessageLog[];
+  calendarEvents?: CalendarEventItem[];
 }
 
 // ==================== PROVIDER ====================
@@ -542,6 +549,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [workspacesList, setWorkspacesList] = useState<Workspace[]>(initialWorkspaces);
   const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState<string | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
   const [marketingIdeas, setMarketingIdeas] = useState<MarketingIdea[]>(MARKETING_IDEAS);
   const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([]);
   const [tools, setTools] = useState<Tool[]>(defaultTools);
@@ -610,6 +618,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     messageTemplates,
     domainMappings,
     messageLogs,
+    calendarEvents,
   };
 
   const permissions = currentUser ? getPermissions(currentUser.role) : viewerPermissions;
@@ -634,6 +643,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (state.manualKpiData !== undefined) setManualKpiData(state.manualKpiData);
     if (state.workspacesList) setWorkspacesList(state.workspacesList);
     if (state.activeWorkspaceId !== undefined) setActiveWorkspaceIdRaw(state.activeWorkspaceId);
+    if (state.calendarEvents) setCalendarEvents(state.calendarEvents);
     if (state.marketingIdeas) setMarketingIdeas(state.marketingIdeas);
     if (state.analyticsEvents) setAnalyticsEvents(state.analyticsEvents);
     if (state.kpiChannelData) setKpiChannelData(state.kpiChannelData);
@@ -745,7 +755,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     schedulePush();
-  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, kpiRecordData, tools, editableKpis, editableAudiences, publishedContent, contentPatterns, backupLogs, messageTemplates, domainMappings, messageLogs, schedulePush]);
+  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, kpiRecordData, tools, editableKpis, editableAudiences, publishedContent, contentPatterns, backupLogs, messageTemplates, domainMappings, messageLogs, calendarEvents, schedulePush]);
 
   // --- Poll for remote changes ---
   useEffect(() => {
@@ -985,6 +995,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActiveWorkspaceIdRaw(prev => prev === id ? null : prev);
   }, []);
 
+  const addCalendarEvent = useCallback((event: CalendarEventItem) => {
+    setCalendarEvents(prev => [event, ...prev]);
+  }, []);
+
+  const updateCalendarEvent = useCallback((id: string, updates: Partial<CalendarEventItem>) => {
+    setCalendarEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  }, []);
+
+  const deleteCalendarEvent = useCallback((id: string) => {
+    setCalendarEvents(prev => prev.filter(e => e.id !== id));
+  }, []);
+
   // ==================== ASSET CRUD ====================
 
   const addAsset = useCallback((asset: Asset) => {
@@ -1194,6 +1216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       approvals,
       assets,
       workspacesList,
+      calendarEvents,
       tools,
       editableKpis,
       editableAudiences,
@@ -1209,7 +1232,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       data.analyticsEvents = analyticsEvents;
     }
     return data;
-  }, [campaigns, approvals, assets, workspacesList, tools, editableKpis, editableAudiences, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, kpiRecordData, marketingIdeas, publishedContent, contentPatterns, analyticsEvents]);
+  }, [campaigns, approvals, assets, workspacesList, calendarEvents, tools, editableKpis, editableAudiences, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, kpiRecordData, marketingIdeas, publishedContent, contentPatterns, analyticsEvents]);
 
   const restoreMerge = useCallback((data: Record<string, unknown[]>) => {
     if (data.campaigns) {
@@ -1256,6 +1279,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const idx = merged.findIndex(w => w.id === iw.id);
           if (idx >= 0) merged[idx] = iw;
           else merged.push(iw);
+        });
+        return merged;
+      });
+    }
+    if (data.calendarEvents) {
+      const incoming = data.calendarEvents as CalendarEventItem[];
+      setCalendarEvents(prev => {
+        const merged = [...prev];
+        incoming.forEach(ev => {
+          const idx = merged.findIndex(e => e.id === ev.id);
+          if (idx >= 0) merged[idx] = ev;
+          else merged.push(ev);
         });
         return merged;
       });
@@ -1391,6 +1426,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (data.approvals) setApprovals(data.approvals as ApprovalItem[]);
     if (data.assets) setAssets(data.assets as Asset[]);
     if (data.workspacesList) setWorkspacesList(data.workspacesList as Workspace[]);
+    if (data.calendarEvents) setCalendarEvents(data.calendarEvents as CalendarEventItem[]);
     if (data.tools) setTools(data.tools as Tool[]);
     if (data.editableKpis) setEditableKpis(data.editableKpis as EditableKPI[]);
     if (data.editableAudiences) setEditableAudiences(data.editableAudiences as EditableAudience[]);
@@ -1457,6 +1493,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       manualKpiData, setManualKpiData,
       workspacesList, setWorkspacesList, activeWorkspaceId, setActiveWorkspaceId,
       addWorkspace, editWorkspace, deleteWorkspace,
+      calendarEvents, addCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
       addAsset, editAsset, deleteAsset,
       syncStatus, lastSyncedAt, forcePush, forceRefresh, resetRemoteState,
       theme, toggleTheme,
