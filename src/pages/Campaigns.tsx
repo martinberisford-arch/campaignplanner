@@ -86,15 +86,18 @@ export default function Campaigns() {
 
   const handleCreateCampaign = () => {
     if (!newTitle.trim()) return;
+    const campaignId = `c${Date.now()}`;
+    const parsedBudget = newBudget.trim() === '' ? 50000 : Number(newBudget);
+    const safeBudget = Number.isFinite(parsedBudget) && parsedBudget >= 0 ? parsedBudget : 50000;
     const newCampaign: Campaign = {
-      id: `c${Date.now()}`,
+      id: campaignId,
       title: newTitle,
       description: newDesc || 'New campaign',
       status: newStatus,
       priority: newPriority,
       startDate: newStartDate || new Date().toISOString().split('T')[0],
       endDate: newEndDate || new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0],
-      budget: parseInt(newBudget) || 50000,
+      budget: safeBudget,
       spent: 0,
       owner: users[0],
       team: [users[0]],
@@ -102,9 +105,9 @@ export default function Campaigns() {
       goals: newGoals ? newGoals.split('\n').filter(g => g.trim()) : ['Define campaign goals'],
       audiences: newAudiences ? newAudiences.split('\n').filter(a => a.trim()) : ['Define target audiences'],
       tasks: [
-        { id: `t${Date.now()}-1`, title: 'Draft campaign brief', description: 'Create initial campaign brief', status: 'todo', assignee: users[0], dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'high', campaignId: `c${Date.now()}`, tags: ['brief'] },
-        { id: `t${Date.now()}-2`, title: 'Audience research', description: 'Research target audiences', status: 'todo', dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'medium', campaignId: `c${Date.now()}`, tags: ['research'] },
-        { id: `t${Date.now()}-3`, title: 'Channel strategy', description: 'Define channel plan', status: 'todo', dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'medium', campaignId: `c${Date.now()}`, tags: ['channels'] },
+        { id: `t${Date.now()}-1`, title: 'Draft campaign brief', description: 'Create initial campaign brief', status: 'todo', assignee: users[0], dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'high', campaignId: campaignId, tags: ['brief'] },
+        { id: `t${Date.now()}-2`, title: 'Audience research', description: 'Research target audiences', status: 'todo', dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'medium', campaignId: campaignId, tags: ['research'] },
+        { id: `t${Date.now()}-3`, title: 'Channel strategy', description: 'Define channel plan', status: 'todo', dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'medium', campaignId: campaignId, tags: ['channels'] },
       ],
       kpis: [],
       workspace: 'ws1',

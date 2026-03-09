@@ -41,6 +41,7 @@ export interface Campaign {
   team: User[];
   channels: Channel[];
   goals: string[];
+  goalStatus?: Record<string, boolean>;
   audiences: string[];
   tasks: Task[];
   kpis: KPI[];
