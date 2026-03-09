@@ -301,6 +301,33 @@ export interface KPISentimentEntry {
   addedBy: string;
 }
 
+export interface KPIRecordEntry {
+  id: string;
+  kpiId: string;
+  periodLabel: string;
+  value: number;
+  target?: number;
+  unit: string;
+  notes?: string;
+  source: KPIDataSource;
+  sourceLabel: string;
+  addedAt: string;
+  addedBy: string;
+}
+
+
+export interface CalendarEventItem {
+  id: string;
+  title: string;
+  description?: string;
+  date: string;
+  endDate?: string;
+  type: 'internal' | 'campaign-support';
+  color?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 // ===== TOOL REGISTRY =====
 
 export interface Tool {
