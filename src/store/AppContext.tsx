@@ -574,6 +574,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLocalModeRef = useRef(false);
   const isMountedRef = useRef(true);
+  const immediatePushRef = useRef(false);
 
   // Keep a ref to the latest shared state so we can read it in async callbacks
   const sharedStateRef = useRef<SharedState>({
@@ -754,8 +755,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       skipNextPushRef.current = false;
       return;
     }
+
+    if (immediatePushRef.current) {
+      immediatePushRef.current = false;
+      pushToServer();
+      return;
+    }
+
     schedulePush();
-  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, kpiRecordData, tools, editableKpis, editableAudiences, publishedContent, contentPatterns, backupLogs, messageTemplates, domainMappings, messageLogs, calendarEvents, schedulePush]);
+  }, [campaigns, approvals, assets, appNotifications, teamMembers, workspaceSettings, notificationSettings, integrations, manualKpiData, workspacesList, activeWorkspaceId, marketingIdeas, analyticsEvents, kpiChannelData, kpiTimeSeriesData, kpiSentimentData, kpiRecordData, tools, editableKpis, editableAudiences, publishedContent, contentPatterns, backupLogs, messageTemplates, domainMappings, messageLogs, calendarEvents, schedulePush, pushToServer]);
 
   // --- Poll for remote changes ---
   useEffect(() => {
@@ -790,6 +798,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(poll, SYNC_POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [applyRemoteState]);
+
+  useEffect(() => {
+    const flushPending = () => {
+      if (!hasInitializedRef.current || isLocalModeRef.current) return;
+      pushToServer();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flushPending();
+    };
+
+    window.addEventListener('beforeunload', flushPending);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', flushPending);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [pushToServer]);
 
   // ==================== AUTH ====================
 
@@ -845,6 +872,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ==================== CAMPAIGN CRUD ====================
 
   const addCampaign = useCallback((campaign: Campaign) => {
+    immediatePushRef.current = true;
     setCampaigns(prev => [campaign, ...prev]);
   }, []);
 

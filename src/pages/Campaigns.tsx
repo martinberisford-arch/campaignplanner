@@ -32,7 +32,7 @@ const priorityColors: Record<string, string> = {
 const CAMPAIGN_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444', '#84cc16'];
 
 export default function Campaigns() {
-  const { campaigns, setView, setSelectedCampaignId, updateTaskStatus, addCampaign, deleteCampaign, addNotification, permissions } = useApp();
+  const { campaigns, setView, setSelectedCampaignId, updateTaskStatus, addCampaign, deleteCampaign, addNotification, forcePush, permissions } = useApp();
   const [boardView, setBoardView] = useState<BoardView>('kanban');
   const [selectedCampaign, setSelectedCampaign] = useState(campaigns[0]?.id || '');
   const [filterStatus, setFilterStatus] = useState<CampaignStatus | 'all'>('all');
@@ -116,6 +116,7 @@ export default function Campaigns() {
       color: CAMPAIGN_COLORS[Math.floor(Math.random() * CAMPAIGN_COLORS.length)],
     };
     addCampaign(newCampaign);
+    forcePush();
     addNotification({
       title: 'New campaign added',
       message: `${newCampaign.title} has been created successfully.`,
