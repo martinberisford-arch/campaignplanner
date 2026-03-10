@@ -1024,14 +1024,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addCalendarEvent = useCallback((event: CalendarEventItem) => {
+    immediatePushRef.current = true;
     setCalendarEvents(prev => [event, ...prev]);
   }, []);
 
   const updateCalendarEvent = useCallback((id: string, updates: Partial<CalendarEventItem>) => {
+    immediatePushRef.current = true;
     setCalendarEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
   }, []);
 
   const deleteCalendarEvent = useCallback((id: string) => {
+    immediatePushRef.current = true;
     setCalendarEvents(prev => prev.filter(e => e.id !== id));
   }, []);
 

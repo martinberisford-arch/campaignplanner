@@ -323,7 +323,7 @@ export interface CalendarEventItem {
   description?: string;
   date: string;
   endDate?: string;
-  type: 'internal' | 'campaign-support';
+  type: 'internal-comms' | 'external-comms' | 'misc' | 'campaign-support';
   color?: string;
   createdBy: string;
   createdAt: string;

@@ -6,6 +6,21 @@ import { CalendarEventItem } from '../types';
 
 type CalendarMode = 'month' | 'timeline';
 type CalendarFilter = 'all' | 'campaigns' | 'events';
+type EventCategoryFilter = 'all' | 'internal-comms' | 'external-comms' | 'misc';
+
+const EVENT_CATEGORY_OPTIONS: { value: EventCategoryFilter; label: string }[] = [
+  { value: 'all', label: 'All Categories' },
+  { value: 'internal-comms', label: 'Internal Comms' },
+  { value: 'external-comms', label: 'External Comms' },
+  { value: 'misc', label: 'Misc' },
+];
+
+const EVENT_STYLE_MAP: Record<CalendarEventItem['type'], { label: string; color: string }> = {
+  'internal-comms': { label: 'Internal Comms', color: '#f59e0b' },
+  'external-comms': { label: 'External Comms', color: '#06b6d4' },
+  misc: { label: 'Misc', color: '#a78bfa' },
+  'campaign-support': { label: 'Campaign Support', color: '#22c55e' },
+};
 
 export default function CalendarView() {
   const {
@@ -16,12 +31,13 @@ export default function CalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [mode, setMode] = useState<CalendarMode>('month');
   const [filter, setFilter] = useState<CalendarFilter>('all');
+  const [eventCategoryFilter, setEventCategoryFilter] = useState<EventCategoryFilter>('all');
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventEndDate, setEventEndDate] = useState('');
   const [eventDescription, setEventDescription] = useState('');
-  const [eventType, setEventType] = useState<CalendarEventItem['type']>('internal');
+  const [eventType, setEventType] = useState<CalendarEventItem['type']>('internal-comms');
   const isDark = theme === 'dark';
 
   const monthStart = startOfMonth(currentDate);
@@ -39,6 +55,12 @@ export default function CalendarView() {
     return result;
   }, [calStart, calEnd]);
 
+  const shouldShowEventCategory = (type: CalendarEventItem['type']) => {
+    if (eventCategoryFilter === 'all') return true;
+    if (type === 'campaign-support') return eventCategoryFilter === 'misc';
+    return type === eventCategoryFilter;
+  };
+
   const getCampaignsForDay = (day: Date) => campaigns.filter(c => {
     try {
       const start = parseISO(c.startDate);
@@ -47,7 +69,12 @@ export default function CalendarView() {
     } catch { return false; }
   });
 
-  const getEventsForDay = (day: Date) => calendarEvents.filter(e => {
+  const filteredCalendarEvents = useMemo(
+    () => calendarEvents.filter(e => shouldShowEventCategory(e.type)),
+    [calendarEvents, eventCategoryFilter],
+  );
+
+  const getEventsForDay = (day: Date) => filteredCalendarEvents.filter(e => {
     try {
       const start = parseISO(e.date);
       const end = e.endDate ? parseISO(e.endDate) : start;
@@ -68,6 +95,7 @@ export default function CalendarView() {
 
   const handleAddEvent = () => {
     if (!eventTitle.trim() || !eventDate) return;
+    const fallbackColor = EVENT_STYLE_MAP[eventType].color;
     addCalendarEvent({
       id: `ce-${Date.now()}`,
       title: eventTitle.trim(),
@@ -75,7 +103,7 @@ export default function CalendarView() {
       date: eventDate,
       endDate: eventEndDate || undefined,
       type: eventType,
-      color: eventType === 'internal' ? '#f59e0b' : '#06b6d4',
+      color: fallbackColor,
       createdBy: 'Current User',
       createdAt: new Date().toISOString(),
     });
@@ -84,7 +112,7 @@ export default function CalendarView() {
     setEventDate('');
     setEventEndDate('');
     setEventDescription('');
-    setEventType('internal');
+    setEventType('internal-comms');
   };
 
   const containerBg = isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200';
@@ -103,7 +131,7 @@ export default function CalendarView() {
         <div>
           <h1 className="text-2xl font-bold">Campaign Calendar</h1>
           <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Plan campaigns and internal events in one place
+            Plan campaigns and communications events in one place
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -118,6 +146,17 @@ export default function CalendarView() {
               </button>
             ))}
           </div>
+
+          <select
+            value={eventCategoryFilter}
+            onChange={e => setEventCategoryFilter(e.target.value as EventCategoryFilter)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-100 border-slate-200 text-slate-700'}`}
+            title="Filter event category"
+          >
+            {EVENT_CATEGORY_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
 
           <div className={`flex rounded-xl p-1 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
             {(['month', 'timeline'] as CalendarMode[]).map(m => (
@@ -139,6 +178,19 @@ export default function CalendarView() {
             <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className={`${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}><ChevronRight size={18} /></button>
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        {EVENT_CATEGORY_OPTIONS.filter(o => o.value !== 'all').map(option => {
+          const type = option.value as Exclude<EventCategoryFilter, 'all'>;
+          const style = EVENT_STYLE_MAP[type];
+          return (
+            <span key={option.value} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: style.color }} />
+              {style.label}
+            </span>
+          );
+        })}
       </div>
 
       {mode === 'month' ? (
@@ -163,9 +215,12 @@ export default function CalendarView() {
                     {showCampaigns && dayCampaigns.slice(0, 2).map(c => (
                       <div key={c.id} onClick={() => { setSelectedCampaignId(c.id); setView('campaign-detail'); }} className="px-1.5 py-0.5 rounded text-[10px] font-semibold truncate cursor-pointer" style={{ backgroundColor: isDark ? c.color + '25' : c.color + '18', color: isDark ? c.color : adjustColorForLight(c.color), borderLeft: `2px solid ${c.color}` }}>{c.title}</div>
                     ))}
-                    {showEvents && dayEvents.slice(0, 2).map(e => (
-                      <div key={e.id} className="px-1.5 py-0.5 rounded text-[10px] font-semibold truncate" style={{ backgroundColor: isDark ? (e.color || '#f59e0b') + '25' : (e.color || '#f59e0b') + '18', color: isDark ? (e.color || '#f59e0b') : adjustColorForLight(e.color || '#f59e0b'), borderLeft: `2px solid ${e.color || '#f59e0b'}` }}>{e.title}</div>
-                    ))}
+                    {showEvents && dayEvents.slice(0, 2).map(e => {
+                      const color = e.color || EVENT_STYLE_MAP[e.type].color;
+                      return (
+                        <div key={e.id} className="px-1.5 py-0.5 rounded text-[10px] font-semibold truncate" style={{ backgroundColor: isDark ? color + '25' : color + '18', color: isDark ? color : adjustColorForLight(color), borderLeft: `2px solid ${color}` }}>{e.title}</div>
+                      );
+                    })}
                     {(dayCampaigns.length + dayEvents.length > 4) && <div className={`text-[10px] pl-1.5 font-medium ${moreText}`}>+more</div>}
                   </div>
                 </div>
@@ -198,17 +253,17 @@ export default function CalendarView() {
                 );
               })}
 
-              {(filter === 'all' || filter === 'events') && calendarEvents.map(event => {
+              {(filter === 'all' || filter === 'events') && filteredCalendarEvents.map(event => {
                 const start = parseISO(event.date); const end = parseISO(event.endDate || event.date);
                 const totalSpan = timelineWeeks.length; const firstWeek = timelineWeeks[0];
                 const startOffset = Math.max(0, Math.floor((start.getTime() - firstWeek.getTime()) / (7 * 86400000)));
                 const duration = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (7 * 86400000)));
-                const color = event.color || '#f59e0b';
+                const color = event.color || EVENT_STYLE_MAP[event.type].color;
                 return (
                   <div key={event.id} className={`flex border-b ${dayBorderClass} ${isDark ? 'hover:bg-slate-800/20' : 'hover:bg-slate-50'}`}>
                     <div className={`w-64 flex-shrink-0 p-3 border-r ${headerBorderClass} flex items-center gap-3`}>
                       <div className="w-2 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                      <div className="min-w-0"><p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{event.title}</p><div className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'} flex items-center gap-1`}><CalendarDays size={10} /> {format(start, 'dd MMM')} {event.endDate ? `— ${format(end, 'dd MMM')}` : ''}</div></div>
+                      <div className="min-w-0"><p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{event.title}</p><div className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'} flex items-center gap-2`}><span className="flex items-center gap-1"><CalendarDays size={10} /> {format(start, 'dd MMM')} {event.endDate ? `— ${format(end, 'dd MMM')}` : ''}</span><span>{EVENT_STYLE_MAP[event.type].label}</span></div></div>
                     </div>
                     <div className="flex-1 flex items-center relative py-2"><div className="absolute h-7 rounded-lg flex items-center px-2 text-[10px] font-semibold" style={{ left: `${(startOffset / totalSpan) * 100}%`, width: `${Math.min((duration / totalSpan) * 100, 100 - (startOffset / totalSpan) * 100)}%`, backgroundColor: isDark ? color + '35' : color + '20', borderLeft: `3px solid ${color}`, color: isDark ? color : adjustColorForLight(color) }}><span className="truncate">{event.title}</span></div></div>
                   </div>
@@ -232,8 +287,9 @@ export default function CalendarView() {
                 <input type="date" value={eventEndDate} onChange={e => setEventEndDate(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
               </div>
               <select value={eventType} onChange={e => setEventType(e.target.value as CalendarEventItem['type'])} className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
-                <option value="internal">Internal Comms</option>
-                <option value="campaign-support">Campaign Support</option>
+                <option value="internal-comms">Internal Comms</option>
+                <option value="external-comms">External Comms</option>
+                <option value="misc">Misc</option>
               </select>
             </div>
             <div className="mt-5 flex justify-end gap-2">
