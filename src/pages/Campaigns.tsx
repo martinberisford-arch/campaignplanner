@@ -32,7 +32,7 @@ const priorityColors: Record<string, string> = {
 const CAMPAIGN_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444', '#84cc16'];
 
 export default function Campaigns() {
-  const { campaigns, setView, setSelectedCampaignId, updateTaskStatus, addCampaign, deleteCampaign, permissions } = useApp();
+  const { campaigns, setView, setSelectedCampaignId, updateTaskStatus, addCampaign, deleteCampaign, addNotification, forcePush, permissions } = useApp();
   const [boardView, setBoardView] = useState<BoardView>('kanban');
   const [selectedCampaign, setSelectedCampaign] = useState(campaigns[0]?.id || '');
   const [filterStatus, setFilterStatus] = useState<CampaignStatus | 'all'>('all');
@@ -86,15 +86,18 @@ export default function Campaigns() {
 
   const handleCreateCampaign = () => {
     if (!newTitle.trim()) return;
+    const campaignId = `c${Date.now()}`;
+    const parsedBudget = newBudget.trim() === '' ? 50000 : Number(newBudget);
+    const safeBudget = Number.isFinite(parsedBudget) && parsedBudget >= 0 ? parsedBudget : 50000;
     const newCampaign: Campaign = {
-      id: `c${Date.now()}`,
+      id: campaignId,
       title: newTitle,
       description: newDesc || 'New campaign',
       status: newStatus,
       priority: newPriority,
       startDate: newStartDate || new Date().toISOString().split('T')[0],
       endDate: newEndDate || new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0],
-      budget: parseInt(newBudget) || 50000,
+      budget: safeBudget,
       spent: 0,
       owner: users[0],
       team: [users[0]],
@@ -102,9 +105,9 @@ export default function Campaigns() {
       goals: newGoals ? newGoals.split('\n').filter(g => g.trim()) : ['Define campaign goals'],
       audiences: newAudiences ? newAudiences.split('\n').filter(a => a.trim()) : ['Define target audiences'],
       tasks: [
-        { id: `t${Date.now()}-1`, title: 'Draft campaign brief', description: 'Create initial campaign brief', status: 'todo', assignee: users[0], dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'high', campaignId: `c${Date.now()}`, tags: ['brief'] },
-        { id: `t${Date.now()}-2`, title: 'Audience research', description: 'Research target audiences', status: 'todo', dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'medium', campaignId: `c${Date.now()}`, tags: ['research'] },
-        { id: `t${Date.now()}-3`, title: 'Channel strategy', description: 'Define channel plan', status: 'todo', dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'medium', campaignId: `c${Date.now()}`, tags: ['channels'] },
+        { id: `t${Date.now()}-1`, title: 'Draft campaign brief', description: 'Create initial campaign brief', status: 'todo', assignee: users[0], dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'high', campaignId: campaignId, tags: ['brief'] },
+        { id: `t${Date.now()}-2`, title: 'Audience research', description: 'Research target audiences', status: 'todo', dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'medium', campaignId: campaignId, tags: ['research'] },
+        { id: `t${Date.now()}-3`, title: 'Channel strategy', description: 'Define channel plan', status: 'todo', dueDate: newStartDate || new Date().toISOString().split('T')[0], priority: 'medium', campaignId: campaignId, tags: ['channels'] },
       ],
       kpis: [],
       workspace: 'ws1',
@@ -113,6 +116,15 @@ export default function Campaigns() {
       color: CAMPAIGN_COLORS[Math.floor(Math.random() * CAMPAIGN_COLORS.length)],
     };
     addCampaign(newCampaign);
+    forcePush();
+    addNotification({
+      title: 'New campaign added',
+      message: `${newCampaign.title} has been created successfully.`,
+      type: 'campaign',
+      link: 'campaign-detail',
+      campaignId: newCampaign.id,
+      icon: '🚀',
+    });
     setShowNewCampaign(false);
     setNewTitle(''); setNewDesc(''); setNewPriority('medium'); setNewStatus('draft');
     setNewStartDate(''); setNewEndDate(''); setNewBudget('');
@@ -444,9 +456,9 @@ export default function Campaigns() {
 
       {/* New Campaign Modal */}
       {showNewCampaign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-16 md:pt-20">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowNewCampaign(false)} />
-          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in">
+          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-6rem)] overflow-y-auto shadow-2xl animate-fade-in">
             <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-6 flex items-center justify-between z-10">
               <div>
                 <h2 className="text-xl font-bold">Create New Campaign</h2>
