@@ -30,7 +30,7 @@ const channelOptions = [
 export default function ContentLog() {
   const {
     publishedContent, addPublishedContent, updatePublishedContent, deletePublishedContent,
-    editableKpis, editableAudiences, campaigns, contentPatterns, resetContentPatterns, permissions
+    editableKpis, editableAudiences, campaigns, contentPatterns, resetContentPatterns, permissions, setView
   } = useApp();
   
   const [showForm, setShowForm] = useState(false);
@@ -163,6 +163,13 @@ export default function ContentLog() {
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setView('mkt-performance')}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-lg transition-colors font-medium text-sm"
+          >
+            <BarChart3 className="w-4 h-4" />
+            View Reporting
+          </button>
+          <button
             onClick={() => setShowInsights(true)}
             className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-colors font-medium text-sm"
           >
@@ -207,6 +214,21 @@ export default function ContentLog() {
               : 0}%
           </div>
         </div>
+      </div>
+
+      <div className="mb-6 rounded-xl border border-cyan-200/60 dark:border-cyan-800/40 bg-cyan-50/70 dark:bg-cyan-900/10 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-cyan-800 dark:text-cyan-300">Content performance is part of your reporting layer</p>
+          <p className="text-xs text-cyan-700/80 dark:text-cyan-300/80 mt-1">
+            Link each entry to a KPI and campaign, then review consolidated trends in Performance Review.
+          </p>
+        </div>
+        <button
+          onClick={() => setView('mkt-performance')}
+          className="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold"
+        >
+          Open Performance Review
+        </button>
       </div>
 
       {/* Content List */}
