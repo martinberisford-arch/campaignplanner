@@ -299,6 +299,25 @@ function saveAuth(userId: string | null) {
   } catch { /* noop */ }
 }
 
+function campaignSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+function campaignPath(title: string): string {
+  const slug = campaignSlug(title);
+  return slug ? `/${slug}` : '/';
+}
+
+function getSlugFromPath(pathname: string): string | null {
+  const clean = pathname.replace(/^\/+|\/+$/g, '');
+  return clean || null;
+}
+
 const viewerPermissions = getPermissions('viewer');
 
 const defaultTools: Tool[] = [
@@ -466,7 +485,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
   const [isAuthenticated, setIsAuthenticated] = useState(!!currentUser);
   const [currentView, setCurrentView] = useState<ViewType>(currentUser ? 'hub' : 'login');
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [selectedCampaignId, setSelectedCampaignIdRaw] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // --- Theme (local only, persisted per-browser) ---
@@ -575,6 +594,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isLocalModeRef = useRef(false);
   const isMountedRef = useRef(true);
   const immediatePushRef = useRef(false);
+  const pendingCampaignSlugRef = useRef<string | null>(null);
 
   // Keep a ref to the latest shared state so we can read it in async callbacks
   const sharedStateRef = useRef<SharedState>({
@@ -818,6 +838,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [pushToServer]);
 
+  useEffect(() => {
+    const slug = getSlugFromPath(window.location.pathname);
+    if (!slug) return;
+    pendingCampaignSlugRef.current = slug;
+  }, []);
+
+  useEffect(() => {
+    const pendingSlug = pendingCampaignSlugRef.current;
+    if (!pendingSlug) return;
+
+    const matchingCampaign = campaigns.find(c => campaignSlug(c.title) === pendingSlug);
+    if (!matchingCampaign) return;
+
+    setSelectedCampaignIdRaw(matchingCampaign.id);
+    if (isAuthenticated) {
+      setCurrentView('campaign-detail');
+      pendingCampaignSlugRef.current = null;
+    }
+  }, [campaigns, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    if (currentView === 'campaign-detail' && selectedCampaignId) {
+      const selected = campaigns.find(c => c.id === selectedCampaignId);
+      if (!selected) return;
+      const nextPath = campaignPath(selected.title);
+      if (window.location.pathname !== nextPath) {
+        window.history.replaceState(null, '', nextPath);
+      }
+      return;
+    }
+
+    if (window.location.pathname !== '/') {
+      window.history.replaceState(null, '', '/');
+    }
+  }, [campaigns, currentView, isAuthenticated, selectedCampaignId]);
+
   // ==================== AUTH ====================
 
   const login = useCallback((email: string, password: string) => {
@@ -829,10 +887,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTeamMembersRaw(prev => prev.map(u => u.id === user.id ? updatedUser : u));
     setCurrentUser(updatedUser);
     setIsAuthenticated(true);
-    setCurrentView('hub');
+
+    const pendingSlug = pendingCampaignSlugRef.current;
+    const deepLinkedCampaign = pendingSlug ? campaigns.find(c => campaignSlug(c.title) === pendingSlug) : undefined;
+    if (deepLinkedCampaign) {
+      setSelectedCampaignIdRaw(deepLinkedCampaign.id);
+      setCurrentView('campaign-detail');
+      pendingCampaignSlugRef.current = null;
+    } else {
+      setCurrentView('hub');
+    }
+
     saveAuth(user.id);
     return { success: true };
-  }, [teamMembers]);
+  }, [campaigns, teamMembers]);
 
   const logout = useCallback(() => {
     setCurrentUser(null);
@@ -842,6 +910,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setView = useCallback((view: ViewType) => setCurrentView(view), []);
+
+  const setSelectedCampaignId = useCallback((id: string | null) => {
+    setSelectedCampaignIdRaw(id);
+  }, []);
 
   // ==================== TASK CRUD ====================
 
