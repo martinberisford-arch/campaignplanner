@@ -492,8 +492,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       const stored = localStorage.getItem('campaignos_theme');
-      return stored === 'light' ? 'light' : 'dark';
-    } catch { return 'dark'; }
+      // Default to light theme for CWTH — professional NHS-aligned appearance
+      if (stored === 'dark') return 'dark';
+      if (stored === 'light') return 'light';
+      return 'light';
+    } catch { return 'light'; }
   });
 
   const toggleTheme = useCallback(() => {

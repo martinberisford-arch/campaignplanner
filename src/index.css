@@ -1,16 +1,26 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-300: #a5b4fc;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
-  --color-brand-800: #3730a3;
-  --color-brand-900: #312e81;
+  /* CWTH / NHS Blue palette */
+  --color-brand-50: #e8f3fb;
+  --color-brand-100: #d0e7f7;
+  --color-brand-200: #a2d0ef;
+  --color-brand-300: #64b0e3;
+  --color-brand-400: #2b90d5;
+  --color-brand-500: #005EB8;
+  --color-brand-600: #004f9e;
+  --color-brand-700: #003e80;
+  --color-brand-800: #003087;
+  --color-brand-900: #002060;
+
+  /* CWTH Teal accent */
+  --color-cwth-50: #e6f7f6;
+  --color-cwth-100: #b3e8e5;
+  --color-cwth-200: #66d1cc;
+  --color-cwth-400: #00b8b0;
+  --color-cwth-500: #00A499;
+  --color-cwth-600: #008080;
+  --color-cwth-700: #006666;
 
   --color-success-50: #ecfdf5;
   --color-success-500: #10b981;
@@ -129,8 +139,8 @@ html {
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 4px rgba(99, 102, 241, 0.3); }
-  50% { box-shadow: 0 0 16px rgba(99, 102, 241, 0.5); }
+  0%, 100% { box-shadow: 0 0 4px rgba(0, 94, 184, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(0, 94, 184, 0.5); }
 }
 
 .animate-fade-in { animation: fadeIn 0.35s ease-out forwards; }
@@ -147,7 +157,7 @@ html {
 .typing-cursor::after {
   content: '▊';
   animation: pulse-dot 0.8s infinite;
-  color: #6366f1;
+  color: #005EB8;
 }
 
 /* ===========================
@@ -176,11 +186,11 @@ html {
 
 .card-premium:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 94, 184, 0.1);
 }
 
 .light-theme .card-premium:hover {
-  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(99, 102, 241, 0.15) !important;
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 94, 184, 0.15) !important;
 }
 
 .gantt-bar {
@@ -194,7 +204,7 @@ html {
 
 /* Better focus styles */
 *:focus-visible {
-  outline: 2px solid #818cf8;
+  outline: 2px solid #0085cc;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -304,12 +314,12 @@ html * {
 .light-theme * { scrollbar-color: #cbd5e1 transparent; }
 .light-theme *::-webkit-scrollbar-thumb { background: #cbd5e1; }
 
-.light-theme .bg-brand-600\/20 { background-color: rgba(79, 70, 229, 0.08) !important; }
-.light-theme .bg-brand-600\/10 { background-color: rgba(79, 70, 229, 0.06) !important; }
-.light-theme .bg-brand-500\/10 { background-color: rgba(99, 102, 241, 0.08) !important; }
-.light-theme .bg-brand-900\/50 { background-color: rgba(99, 102, 241, 0.06) !important; }
-.light-theme .bg-brand-800\/30 { background-color: rgba(99, 102, 241, 0.04) !important; }
-.light-theme .border-brand-700\/30 { border-color: rgba(99, 102, 241, 0.15) !important; }
+.light-theme .bg-brand-600\/20 { background-color: rgba(0, 79, 158, 0.08) !important; }
+.light-theme .bg-brand-600\/10 { background-color: rgba(0, 79, 158, 0.06) !important; }
+.light-theme .bg-brand-500\/10 { background-color: rgba(0, 94, 184, 0.08) !important; }
+.light-theme .bg-brand-900\/50 { background-color: rgba(0, 94, 184, 0.06) !important; }
+.light-theme .bg-brand-800\/30 { background-color: rgba(0, 94, 184, 0.04) !important; }
+.light-theme .border-brand-700\/30 { border-color: rgba(0, 94, 184, 0.15) !important; }
 
 .light-theme .bg-success-500\/10 { background-color: rgba(16, 185, 129, 0.08) !important; }
 .light-theme .bg-red-500\/10,
@@ -340,8 +350,8 @@ html * {
 .light-theme input:focus,
 .light-theme textarea:focus,
 .light-theme select:focus {
-  border-color: #818cf8 !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+  border-color: #0085cc !important;
+  box-shadow: 0 0 0 3px rgba(0, 94, 184, 0.1) !important;
 }
 
 .light-theme kbd {
@@ -359,7 +369,7 @@ html * {
 }
 
 .light-theme .shadow-lg.shadow-brand-500\/20 {
-  box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.1) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 94, 184, 0.1) !important;
 }
 
 .light-theme .recharts-cartesian-grid line { stroke: #e2e8f0 !important; }
@@ -370,7 +380,7 @@ html * {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
 }
 
-.light-theme .typing-cursor::after { color: #4f46e5 !important; }
+.light-theme .typing-cursor::after { color: #005EB8 !important; }
 
 .light-theme tr:hover td { background-color: #f1f5f9 !important; }
 
@@ -398,6 +408,11 @@ html * {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
 }
+
+/* CWTH teal accent in light theme */
+.light-theme .bg-cwth-500\/10 { background-color: rgba(0, 164, 153, 0.08) !important; }
+.light-theme .bg-cwth-500\/20 { background-color: rgba(0, 164, 153, 0.12) !important; }
+.light-theme .border-cwth-500\/20 { border-color: rgba(0, 164, 153, 0.2) !important; }
 
 /* ===========================
    CHAT INTERFACE
@@ -435,7 +450,7 @@ html * {
   --destructive-foreground: #f8fafc;
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #6366f1;
+  --ring: #005EB8;
   --radius: 8px;
 }
 
@@ -459,5 +474,5 @@ html * {
   --destructive-foreground: #f8fafc;
   --border: #334155;
   --input: #334155;
-  --ring: #818cf8;
+  --ring: #0085cc;
 }
