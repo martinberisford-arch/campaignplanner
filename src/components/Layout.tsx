@@ -11,7 +11,7 @@ import {
 import { useState, useRef, useEffect } from 'react';
 
 const WORKSPACE_ICONS = ['🏥','🌍','👥','🎯','📊','🏛️','🎓','💼','🚀','🔬','📱','🏢','⚡','🌐','📋'];
-const WORKSPACE_COLORS = ['#6366f1','#10b981','#f59e0b','#ec4899','#8b5cf6','#06b6d4','#ef4444','#84cc16','#f97316'];
+const WORKSPACE_COLORS = ['#005EB8','#003087','#00A499','#10b981','#f59e0b','#ec4899','#8b5cf6','#06b6d4','#ef4444'];
 
 const viewLabels: Record<string, string> = {
   hub: 'Home',
@@ -72,7 +72,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [wsModal, setWsModal] = useState<'create' | 'edit' | null>(null);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const [deleteConfirmWs, setDeleteConfirmWs] = useState<string | null>(null);
-  const [wsForm, setWsForm] = useState({ name: '', description: '', icon: '🎯', color: '#6366f1' });
+  const [wsForm, setWsForm] = useState({ name: '', description: '', icon: '🎯', color: '#005EB8' });
   const [wsSuccess, setWsSuccess] = useState('');
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -181,7 +181,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   // Workspace modal handlers
   const openCreateWs = () => {
-    setWsForm({ name: '', description: '', icon: '🎯', color: '#6366f1' });
+    setWsForm({ name: '', description: '', icon: '🎯', color: '#005EB8' });
     setWsModal('create');
     setShowWorkspacePicker(false);
   };
