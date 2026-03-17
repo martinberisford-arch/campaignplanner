@@ -11,7 +11,7 @@ import {
 import { useState, useRef, useEffect } from 'react';
 
 const WORKSPACE_ICONS = ['🏥','🌍','👥','🎯','📊','🏛️','🎓','💼','🚀','🔬','📱','🏢','⚡','🌐','📋'];
-const WORKSPACE_COLORS = ['#6366f1','#10b981','#f59e0b','#ec4899','#8b5cf6','#06b6d4','#ef4444','#84cc16','#f97316'];
+const WORKSPACE_COLORS = ['#005EB8','#003087','#00A499','#10b981','#f59e0b','#ec4899','#8b5cf6','#06b6d4','#ef4444'];
 
 const viewLabels: Record<string, string> = {
   hub: 'Home',
@@ -72,7 +72,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [wsModal, setWsModal] = useState<'create' | 'edit' | null>(null);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const [deleteConfirmWs, setDeleteConfirmWs] = useState<string | null>(null);
-  const [wsForm, setWsForm] = useState({ name: '', description: '', icon: '🎯', color: '#6366f1' });
+  const [wsForm, setWsForm] = useState({ name: '', description: '', icon: '🎯', color: '#005EB8' });
   const [wsSuccess, setWsSuccess] = useState('');
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -181,7 +181,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   // Workspace modal handlers
   const openCreateWs = () => {
-    setWsForm({ name: '', description: '', icon: '🎯', color: '#6366f1' });
+    setWsForm({ name: '', description: '', icon: '🎯', color: '#005EB8' });
     setWsModal('create');
     setShowWorkspacePicker(false);
   };
@@ -225,16 +225,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Command Palette */}
       <CommandPalette isOpen={cmdPaletteOpen} onClose={() => setCmdPaletteOpen(false)} />
 
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-[68px]'} ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:relative z-50 h-full ${theme === 'light' ? 'bg-white border-r border-gray-200' : 'bg-slate-900 border-r border-slate-800'} flex flex-col transition-all duration-300`}>
+      {/* Sidebar — always NHS dark blue for strong CWTH brand identity */}
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-[68px]'} ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:relative z-50 h-full bg-[#003087] border-r border-white/10 flex flex-col transition-all duration-300`}>
         {/* Logo */}
-        <div className={`flex items-center ${sidebarOpen ? 'px-5' : 'px-3 justify-center'} h-16 border-b ${theme === 'light' ? 'border-gray-200' : 'border-slate-800'}`}>
+        <div className={`flex items-center ${sidebarOpen ? 'px-5' : 'px-3 justify-center'} h-16 border-b border-white/10`}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center font-bold text-sm shadow-lg shadow-brand-500/20 text-white">C</div>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#005EB8] to-[#0072CE] flex items-center justify-center font-bold text-sm shadow-lg shadow-black/30 text-white flex-shrink-0">C</div>
             {sidebarOpen && (
               <div className="animate-fade-in-fast">
-                <h1 className="font-bold text-base leading-tight">Comms Dashboard</h1>
-                <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">Enterprise</p>
+                <h1 className="font-bold text-base leading-tight text-white">CWTH Comms</h1>
+                <p className="text-[10px] text-blue-200/60 font-medium tracking-wider uppercase">Training Hub</p>
               </div>
             )}
           </div>
@@ -242,21 +242,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Workspace Picker */}
         {sidebarOpen && (
-          <div className={`px-3 py-2.5 border-b ${theme === 'light' ? 'border-gray-200' : 'border-slate-800'} relative`} ref={wsRef}>
+          <div className="px-3 py-2.5 border-b border-white/10 relative" ref={wsRef}>
             <button onClick={() => setShowWorkspacePicker(!showWorkspacePicker)}
-              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl transition-colors ${theme === 'light' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-slate-800/50 hover:bg-slate-800'}`}>
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl transition-colors bg-white/10 hover:bg-white/15">
               <span className="text-lg">{wsIcon}</span>
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-xs font-semibold truncate">{wsLabel}</p>
-                <p className="text-[10px] text-slate-500">{activeWorkspaceId ? `${getWsCampaignCount(activeWorkspaceId)} campaigns` : 'All workspaces'}</p>
+                <p className="text-xs font-semibold truncate text-white">{wsLabel}</p>
+                <p className="text-[10px] text-blue-200/60">{activeWorkspaceId ? `${getWsCampaignCount(activeWorkspaceId)} campaigns` : 'All workspaces'}</p>
               </div>
-              <ChevronDown size={14} className={`text-slate-500 transition-transform ${showWorkspacePicker ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`text-blue-200/60 transition-transform ${showWorkspacePicker ? 'rotate-180' : ''}`} />
             </button>
 
             {showWorkspacePicker && (
               <div className={`absolute left-3 right-3 top-full mt-1 rounded-xl shadow-2xl z-[100] overflow-hidden animate-scale-in ${theme === 'light' ? 'bg-white border border-gray-200' : 'bg-slate-800 border border-slate-700'}`}>
                 <button onClick={() => { setActiveWorkspaceId(null); setShowWorkspacePicker(false); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-700/50 transition-colors ${!activeWorkspaceId ? 'bg-brand-600/10 border-l-2 border-brand-500' : 'border-l-2 border-transparent'}`}>
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${!activeWorkspaceId ? (theme === 'light' ? 'bg-brand-50 border-l-2 border-brand-500' : 'bg-brand-600/10 border-l-2 border-brand-500') : 'border-l-2 border-transparent hover:bg-slate-700/50'}`}>
                   <span className="text-base">🌐</span>
                   <div className="flex-1 text-left">
                     <p className="text-xs font-semibold">All Workspaces</p>
@@ -298,19 +298,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-          {sidebarOpen && <p className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${theme === 'light' ? 'text-gray-400' : 'text-slate-600'}`}>Main Menu</p>}
+          {sidebarOpen && <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-blue-200/50">Main Menu</p>}
           {navItems.map(item => (
             <button key={item.id} onClick={() => { if (item.permitted) { setView(item.id); setMobileMenuOpen(false); } }}
               className={`w-full flex items-center gap-3 ${sidebarOpen ? 'px-3' : 'justify-center px-2'} py-2 rounded-xl text-sm font-medium transition-all duration-150 btn-press ${
-                !item.permitted ? 'text-slate-700 cursor-not-allowed' :
+                !item.permitted ? 'text-white/20 cursor-not-allowed' :
                 currentView === item.id
-                  ? theme === 'light' ? 'bg-brand-50 text-brand-600 shadow-sm' : 'bg-brand-600/15 text-brand-400 shadow-sm'
-                  : theme === 'light' ? 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-white/20 text-white shadow-sm'
+                  : 'text-blue-100/70 hover:bg-white/10 hover:text-white'
               }`}
               title={!item.permitted ? `Your role (${currentUser?.role}) does not have access` : item.label}>
               <span className="flex-shrink-0">{item.icon}</span>
               {sidebarOpen && <span className="flex-1 text-left">{item.label}</span>}
-              {sidebarOpen && !item.permitted && <Lock size={12} className="text-slate-700" />}
+              {sidebarOpen && !item.permitted && <Lock size={12} className="text-white/20" />}
               {sidebarOpen && item.badge && item.badge > 0 && item.permitted && (
                 <span className="px-1.5 py-0.5 text-[10px] font-bold bg-danger-500 text-white rounded-full min-w-[20px] text-center">{item.badge}</span>
               )}
@@ -319,20 +319,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Marketing Tools Section */}
           <div className="pt-2">
-            {sidebarOpen && <p className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${theme === 'light' ? 'text-gray-400' : 'text-slate-600'}`}>Marketing Tools</p>}
-            {!sidebarOpen && <div className={`border-t my-2 ${theme === 'light' ? 'border-gray-200' : 'border-slate-800'}`} />}
+            {sidebarOpen && <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-blue-200/50">Marketing Tools</p>}
+            {!sidebarOpen && <div className="border-t my-2 border-white/10" />}
             {marketingNavItems.map(item => (
               <button key={item.id} onClick={() => { if (item.permitted) { setView(item.id); setMobileMenuOpen(false); } }}
                 className={`w-full flex items-center gap-3 ${sidebarOpen ? 'px-3' : 'justify-center px-2'} py-2 rounded-xl text-sm font-medium transition-all duration-150 btn-press ${
-                  !item.permitted ? 'text-slate-700 cursor-not-allowed' :
+                  !item.permitted ? 'text-white/20 cursor-not-allowed' :
                   currentView === item.id
-                    ? theme === 'light' ? 'bg-emerald-50 text-emerald-600 shadow-sm' : 'bg-emerald-600/15 text-emerald-400 shadow-sm'
-                    : theme === 'light' ? 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-[#00A499]/25 text-[#66d1cc] shadow-sm'
+                    : 'text-blue-100/70 hover:bg-white/10 hover:text-white'
                 }`}
                 title={!item.permitted ? `Your role (${currentUser?.role}) does not have access` : item.label}>
                 <span className="flex-shrink-0">{item.icon}</span>
                 {sidebarOpen && <span className="flex-1 text-left">{item.label}</span>}
-                {sidebarOpen && !item.permitted && <Lock size={12} className="text-slate-700" />}
+                {sidebarOpen && !item.permitted && <Lock size={12} className="text-white/20" />}
               </button>
             ))}
           </div>
@@ -340,13 +340,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {/* Admin Section - Only visible to admins */}
           {currentUser?.role === 'admin' && (
             <div className="pt-2">
-              {sidebarOpen && <p className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${theme === 'light' ? 'text-gray-400' : 'text-slate-600'}`}>Admin</p>}
-              {!sidebarOpen && <div className={`border-t my-2 ${theme === 'light' ? 'border-gray-200' : 'border-slate-800'}`} />}
+              {sidebarOpen && <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-blue-200/50">Admin</p>}
+              {!sidebarOpen && <div className="border-t my-2 border-white/10" />}
               <button onClick={() => { setView('admin-kpis'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 ${sidebarOpen ? 'px-3' : 'justify-center px-2'} py-2 rounded-xl text-sm font-medium transition-all duration-150 btn-press ${
                   currentView === 'admin-kpis'
-                    ? theme === 'light' ? 'bg-violet-50 text-violet-600 shadow-sm' : 'bg-violet-600/15 text-violet-400 shadow-sm'
-                    : theme === 'light' ? 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-violet-500/25 text-violet-200 shadow-sm'
+                    : 'text-blue-100/70 hover:bg-white/10 hover:text-white'
                 }`}>
                 <span className="flex-shrink-0"><BarChart3 size={19} /></span>
                 {sidebarOpen && <span className="flex-1 text-left">Manage KPIs</span>}
@@ -354,8 +354,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <button onClick={() => { setView('admin-audiences'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 ${sidebarOpen ? 'px-3' : 'justify-center px-2'} py-2 rounded-xl text-sm font-medium transition-all duration-150 btn-press ${
                   currentView === 'admin-audiences'
-                    ? theme === 'light' ? 'bg-violet-50 text-violet-600 shadow-sm' : 'bg-violet-600/15 text-violet-400 shadow-sm'
-                    : theme === 'light' ? 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-violet-500/25 text-violet-200 shadow-sm'
+                    : 'text-blue-100/70 hover:bg-white/10 hover:text-white'
                 }`}>
                 <span className="flex-shrink-0"><Users size={19} /></span>
                 {sidebarOpen && <span className="flex-1 text-left">Manage Audiences</span>}
@@ -364,34 +364,34 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        {/* AI Engine card */}
+        {/* CWTH AI Engine card */}
         {sidebarOpen && (
-          <div className="mx-2 mb-2 p-3 rounded-xl bg-gradient-to-br from-brand-900/50 to-brand-800/30 border border-brand-700/30">
+          <div className="mx-2 mb-2 p-3 rounded-xl bg-white/10 border border-white/10">
             <div className="flex items-center gap-2 mb-1">
-              <Zap size={14} className="text-brand-400" />
-              <span className="text-xs font-semibold text-brand-300">AI Engine Active</span>
+              <Zap size={14} className="text-[#66d1cc]" />
+              <span className="text-xs font-semibold text-white">AI Engine Active</span>
             </div>
-            <p className="text-[10px] text-slate-400">GPT-4 powered insights, briefs, and forecasting.</p>
+            <p className="text-[10px] text-blue-200/60">AI-powered insights, briefs, and campaign analytics.</p>
           </div>
         )}
 
         {/* User profile */}
-        <div className={`border-t p-2.5 ${theme === 'light' ? 'border-gray-200' : 'border-slate-800'} ${sidebarOpen ? '' : 'flex justify-center'}`}>
+        <div className={`border-t border-white/10 p-2.5 ${sidebarOpen ? '' : 'flex justify-center'}`}>
           <div className={`flex items-center gap-3 ${sidebarOpen ? 'px-2' : ''}`}>
             <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${roleGradient} flex items-center justify-center text-xs font-bold flex-shrink-0 text-white`}>
               {currentUser?.avatar || '??'}
             </div>
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{currentUser?.name || 'Unknown'}</p>
+                <p className="text-sm font-medium truncate text-white">{currentUser?.name || 'Unknown'}</p>
                 <div className="flex items-center gap-1">
-                  <Shield size={10} className={roleColor} />
-                  <p className={`text-[10px] capitalize ${roleColor}`}>{currentUser?.role}</p>
+                  <Shield size={10} className="text-blue-200/60" />
+                  <p className="text-[10px] capitalize text-blue-200/60">{currentUser?.role}</p>
                 </div>
               </div>
             )}
             {sidebarOpen && (
-              <button onClick={() => setShowLogoutConfirm(true)} className="text-slate-500 cursor-pointer hover:text-red-400 transition-colors flex-shrink-0" title="Sign out">
+              <button onClick={() => setShowLogoutConfirm(true)} className="text-blue-200/50 cursor-pointer hover:text-red-300 transition-colors flex-shrink-0" title="Sign out">
                 <LogOut size={16} />
               </button>
             )}
@@ -400,9 +400,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Sidebar toggle */}
         <button onClick={() => setSidebarOpen(!sidebarOpen)}
-          className={`hidden md:flex absolute -right-3 top-20 w-6 h-6 rounded-full items-center justify-center transition-colors ${
-            theme === 'light' ? 'bg-white border border-gray-300 text-gray-400 hover:text-gray-700 hover:bg-gray-50 shadow-sm' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700'
-          }`}>
+          className="hidden md:flex absolute -right-3 top-20 w-6 h-6 rounded-full items-center justify-center transition-colors bg-[#003087] border border-white/20 text-blue-200/60 hover:text-white hover:bg-[#005EB8] shadow-md">
           {sidebarOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
         </button>
       </aside>
@@ -413,7 +411,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className={`h-14 flex items-center px-4 md:px-6 gap-3 flex-shrink-0 glass ${theme === 'light' ? 'border-b border-gray-200 bg-white/90' : 'border-b border-slate-800 bg-slate-900/80'}`}>
-          <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setMobileMenuOpen(true)}><Menu size={22} /></button>
+          <button className={`md:hidden transition-colors ${theme === 'light' ? 'text-slate-500 hover:text-slate-900' : 'text-slate-400 hover:text-white'}`} onClick={() => setMobileMenuOpen(true)}><Menu size={22} /></button>
 
           {/* Breadcrumb */}
           <div className="hidden md:flex items-center gap-1.5 text-xs min-w-0">
@@ -422,7 +420,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <ArrowLeft size={14} />
               </button>
             )}
-            <span className="text-slate-600 flex-shrink-0">Comms Dashboard</span>
+            <span className="text-slate-600 flex-shrink-0">CWTH Comms</span>
             <span className="text-slate-700 flex-shrink-0">/</span>
             {breadcrumbCategory && (
               <>
